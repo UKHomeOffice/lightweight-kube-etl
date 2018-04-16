@@ -1,4 +1,4 @@
-describe("poormans kube etl", () => {
+describe("lightweight kube etl", () => {
   describe("start_kube_job", () => {
     it("should delete jobs with the same role")
     it("should start a new job")
