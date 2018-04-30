@@ -40,7 +40,7 @@ describe("s3", async () => {
 
   describe("get_object_hash", () => {
     it("should return the Etag of an object", async () => {
-      const s3 = require("../modules/s3")
+      const s3 = require("../src/s3")
       res = await s3.get_object_hash("foo", "bar")
 
       expect(res).toEqual("ba6119931c7010138eec96d9fb75701865908286")
@@ -49,7 +49,7 @@ describe("s3", async () => {
 
   describe("get_manifest", () => {
     it("should get the manifest.json", async () => {
-      const s3 = require("../modules/s3")
+      const s3 = require("../src/s3")
       res = await s3.get_manifest("foo", "bar")
 
       expect(res).toEqual({
@@ -65,7 +65,7 @@ describe("s3", async () => {
 
   describe("check_manifest", () => {
     it("should return true if there are no unmatched hashes", async () => {
-      const s3 = require("../modules/s3")
+      const s3 = require("../src/s3")
       res = await s3.check_manifest("foo")
 
       expect(res).toEqual(true)

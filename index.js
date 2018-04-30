@@ -1,7 +1,7 @@
 "use strict"
 
-const {create_queue} = require("./sqs")
-const {sqs_message_handler} = require("./etl")
+const {create_queue} = require("./src/sqs")
+const {sqs_message_handler} = require("./src/etl")
 
 const app = create_queue(sqs_message_handler)
 
