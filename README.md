@@ -78,29 +78,49 @@ spec:
         - name: api
           image: ukhomeoffice/lightweight-kube-etl
           env:
-            - name: BUCKET
-              valueFrom:
-                secretKeyRef:
-                  name: my-secret
-                  key: bucket_name
-            - name: S3_ACCESS_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: my-secret
-                  key: access_key_id
-            - name: S3_SECRET_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: my-secret
-                  key: secret_access_key
-            - name: QUEUE
-              valueFrom:
-                secretKeyRef:
-                  name: my-secret
-                  key: sqs_queue
-            - name: ROLE
-              value: 'myjob'
-            - name: CRONJOB
-              value: 'myjob'
+          - name: S3_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                name: my-secret
+                key: access_key_id
+          - name: BUCKET
+            valueFrom:
+              secretKeyRef:
+                name: my-secret
+                key: bucket_name
+          - name: S3_SECRET_KEY
+            valueFrom:
+              secretKeyRef:
+                name: my-secret
+                key: secret_access_key
+          - name: QUEUE
+            valueFrom:
+              secretKeyRef:
+                name: my-secret
+                key: queue.url
+          - name: SQS_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                name: my-secret
+                key: access.key
+          - name: SQS_SECRET_KEY
+            valueFrom:
+              secretKeyRef:
+                name: my-secret
+                key: secret.key
+          - name: REGION
+            valueFrom:
+              secretKeyRef:
+                name: my-secret
+                key: region
+          - name: CONTEXT
+            valueFrom:
+              secretKeyRef:
+                name: my-secret
+                key: context
+          - name: ROLE
+            value: 'myjob'
+          - name: CRONJOB
+            value: 'myjob'
 
 ```
