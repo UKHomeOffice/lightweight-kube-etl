@@ -12,6 +12,7 @@ RUN npm prune --production
 
 FROM node:alpine as runner
 COPY --from=builder /app/index.js /app/package.json /app/
+COPY --from=builder /app/src /app/src
 COPY --from=builder /app/node_modules /app/node_modules
 WORKDIR /app
 USER node
