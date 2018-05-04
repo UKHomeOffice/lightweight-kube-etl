@@ -61,6 +61,7 @@ kubectl create -f ./cronjob.example.yml
 kubectl create job test-1 --from=cronjob/myjob
 ```
 
+
 # Deployment of this example:
 ```yaml
 apiVersion: extensions/v1beta1
