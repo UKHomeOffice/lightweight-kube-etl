@@ -5,7 +5,7 @@ pipeline:
       - DOCKER_HOST=tcp://172.17.0.1:2375
     image: registry.hub.docker.com/plugins/docker
     repo: docker.digital.homeoffice.gov.uk/ukhomeofficedigital/lightweight-kube-etl
-    secrets: [ DOCKER_USERNAME, DOCKER_PASSWORD ]
+    secrets: [ docker_username, docker_password ]
     registry: docker.digital.homeoffice.gov.uk
     force_tag: true
     tags:
