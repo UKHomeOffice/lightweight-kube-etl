@@ -24,9 +24,8 @@ pipeline:
       - docker_password
     environment:
       - DOCKER_HOST=tcp://172.17.0.1:2375
-      - DOCKER_USERNAME=dacc-robot
     commands:
-      - docker login -u="${DOCKER_USERNAME}" -p=$${DOCKER_PASSWORD} docker.digital.homeoffice.gov.uk
+      - docker login -u="dacc-robot" -p=$${DOCKER_PASSWORD} docker.digital.homeoffice.gov.uk
       - docker tag image_name docker.digital.homeoffice.gov.uk/ukhomeofficedigital/lightweight-kube-etl:$${DRONE_COMMIT_SHA}
       - docker push docker.digital.homeoffice.gov.uk/ukhomeofficedigital/lightweight-kube-etl:$${DRONE_COMMIT_SHA}
     when:
