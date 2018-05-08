@@ -31,6 +31,7 @@ It will delete any currently running job made by the process, and then kick off 
 ]
 ```
 
+
 # Cronjob example:
 ```yaml
 apiVersion: batch/v1beta1
