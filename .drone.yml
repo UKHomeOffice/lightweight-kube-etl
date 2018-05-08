@@ -1,17 +1,34 @@
 pipeline:
 
-  build:
+  # build:
+  #   environment:
+  #     - DOCKER_HOST=tcp://172.17.0.1:2375
+  #   image: registry.hub.docker.com/plugins/docker
+  #   repo: docker.digital.homeoffice.gov.uk/ukhomeofficedigital/lightweight-kube-etl
+  #   secrets: [ DOCKER_USERNAME, DOCKER_PASSWORD ]
+  #   registry: docker.digital.homeoffice.gov.uk
+  #   force_tag: true
+  #   tags:
+  #     - ${DRONE_COMMIT_SHA}
+  #     - ${DRONE_COMMIT_BRANCH}
+  #     - b${DRONE_BUILD_NUMBER}
+  #   when:
+  #     branch: master
+  #     event: push
+  #
+  #
+
+  image_to_artifactory:
+    image: docker:17.09.1
+    secrets:
+      - docker_password
     environment:
       - DOCKER_HOST=tcp://172.17.0.1:2375
-    image: registry.hub.docker.com/plugins/docker
-    repo: docker.digital.homeoffice.gov.uk/ukhomeofficedigital/lightweight-kube-etl
-    secrets: [ DOCKER_USERNAME, DOCKER_PASSWORD ]
-    registry: docker.digital.homeoffice.gov.uk
-    force_tag: true
-    tags:
-      - ${DRONE_COMMIT_SHA}
-      - ${DRONE_COMMIT_BRANCH}
-      - b${DRONE_BUILD_NUMBER}
+      - DOCKER_USERNAME=dacc-robot
+    commands:
+      - docker login -u="${DOCKER_USERNAME}" -p=$${DOCKER_PASSWORD} docker.digital.homeoffice.gov.uk
+      - docker tag image_name docker.digital.homeoffice.gov.uk/ukhomeofficedigital/lightweight-kube-etl:$${DRONE_COMMIT_SHA}
+      - docker push docker.digital.homeoffice.gov.uk/ukhomeofficedigital/lightweight-kube-etl:$${DRONE_COMMIT_SHA}
     when:
       branch: master
       event: push
