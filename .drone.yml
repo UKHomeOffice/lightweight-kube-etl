@@ -21,8 +21,8 @@ pipeline:
   image_to_artifactory:
     image: docker:17.09.1
     secrets:
-      - docker_username
-      - docker_password
+      - DOCKER_USERNAME
+      - DOCKER_PASSWORD
     environment:
       - DOCKER_HOST=tcp://172.17.0.1:2375
       - DOCKER_REPO=docker.digital.homeoffice.gov.uk
@@ -31,7 +31,7 @@ pipeline:
       - DOCKER_IMAGE=lightweight-kube-etl
     commands:
       - IMAGE="${DOCKER_REPO}${DOCKER_BASEDIR}${DOCKER_REPO_NAMESPACE}${DOCKER_BASEDIR}${DOCKER_IMAGE}"
-      - docker login -u="${DOCKER_USERNAME}" -p="${DOCKER_PASSWORD}" "${DOCKER_REPO}"
+      - docker login -u=${DOCKER_USERNAME} -p=${DOCKER_PASSWORD} ${DOCKER_REPO}
       - docker tag "${DOCKER_IMAGE}" "${IMAGE}:${DRONE_COMMIT_SHA}"
       - docker push "${IMAGE}:${DRONE_COMMIT_SHA}"
     when:
