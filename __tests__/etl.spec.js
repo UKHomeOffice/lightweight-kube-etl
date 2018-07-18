@@ -1,5 +1,3 @@
-const kube = require("../src/kube")
-
 const messages = [
   {
     MessageId: "2da4371e-b831-4b30-b8f6-eb815e25c2de",
@@ -29,15 +27,6 @@ const messages = [
   }
 ]
 
-process.env = Object.assign(
-  {
-    BUCKET: "xxx",
-    ROLE: "xxx",
-    CRONJOB: " xxx"
-  },
-  process.env
-)
-
 describe("etl", () => {
   describe("is_manifest", () => {
     const {is_manifest} = require("../src/etl")
@@ -60,39 +49,40 @@ describe("etl", () => {
   })
 
   describe("sqs_message_handler", () => {
-    jest.spyOn(kube, "start_kube_job").mockReturnValue(true)
-    const done = () => true
 
-    beforeEach(() => {
-      kube.start_kube_job.mockReset()
-    })
+    it('should call done function if the message does not contain a manifest key', function () {
+      // TODO
+    });
 
     it("should start the kube job if the manifest is good", async () => {
-
-      // const s3 = jest.fn().mockImplementation(() => ({
-      //   check_manifest: (bucket) => ({
-      //     promise: () =>Promise.resolve(true)
-      //   })
-      // }))
-
+      const done = () => true
+      jest.resetModules()
       jest.mock("../src/s3", () => ({
-        check_manifest: bucket => Promise.resolve(true)
+        check_manifest: bucket => Promise.resolve(true),
+        get_job_type: (bucket, key) => Promise.resolve("delta")
       }))
+      const kube = require("../src/kube")
+      jest.spyOn(kube, "start_kube_job").mockReturnValue(true)
 
       const etl = require("../src/etl.js")
-messages[0] //?
+
       await etl.sqs_message_handler(messages[0], done)
-      expect(kube.start_kube_job).toHaveBeenCalledTimes(1)
+      expect(kube.start_kube_job).toHaveBeenCalledTimes(2)
     })
 
-    // it("should not start the kube job if the manifest is incorrect", async () => {
-    //   jest.mock("../src/s3", () => ({
-    //     check_manifest: bucket => Promise.resolve(false)
-    //   }))
-    //   const etl = require("../src/etl.js")
-    //
-    //   await etl.sqs_message_handler(messages[0], done)
-    //   expect(kube.start_kube_job).toHaveBeenCalledTimes(1)
-    // })
+    it("should not start the kube job if the manifest is incorrect", async () => {
+      const done = () => true
+      jest.resetModules()
+      jest.mock("../src/s3", () => ({
+        check_manifest: bucket => Promise.resolve(false)
+      }))
+      const kube = require("../src/kube")
+      jest.spyOn(kube, "start_kube_job").mockReturnValue(true)
+
+      const etl = require("../src/etl.js")
+
+      await etl.sqs_message_handler(messages[0], done)
+      expect(kube.start_kube_job).toHaveBeenCalledTimes(0)
+    })
   })
 })
