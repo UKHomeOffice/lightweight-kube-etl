@@ -49,6 +49,7 @@ describe("etl", () => {
   })
 
   describe("sqs_message_handler", () => {
+    const done = () => true
 
     beforeEach(() => {
       jest.resetModules()
@@ -59,7 +60,6 @@ describe("etl", () => {
     });
 
     it("should start the kube job if the manifest is good", async () => {
-      const done = () => true
       jest.mock("../src/s3", () => ({
         check_manifest: bucket => Promise.resolve(true),
         get_job_type: (bucket, key) => Promise.resolve("delta")
@@ -74,7 +74,6 @@ describe("etl", () => {
     })
 
     it("should not start the kube job if the manifest is incorrect", async () => {
-      const done = () => true
       jest.mock("../src/s3", () => ({
         check_manifest: bucket => Promise.resolve(false)
       }))
