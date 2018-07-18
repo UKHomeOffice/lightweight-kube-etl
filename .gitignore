@@ -1,3 +1,4 @@
 kubectl
 node_modules
 coverage
+.idea/
