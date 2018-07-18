@@ -11,7 +11,7 @@ const client = new AWS.SQS({
   region: REGION
 })
 
-const create_queue = handler =>
+const create_consumer = handler =>
   sqs.create({
     queueUrl: QUEUE,
     handleMessage: handler,
@@ -19,5 +19,5 @@ const create_queue = handler =>
   })
 
 module.exports = {
-  create_queue
+  create_consumer
 }

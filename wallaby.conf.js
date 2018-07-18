@@ -19,6 +19,7 @@ module.exports = function(wallaby) {
     },
     workers: {
       recycle: true
-    }
+    },
+    debug: true
   }
 }
