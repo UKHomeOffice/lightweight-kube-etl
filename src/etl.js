@@ -8,7 +8,7 @@ const {start_kube_job} = require("./kube")
 const sqs_message_handler = async (message, done) => {
   if (is_manifest(message)) {
     if (await check_manifest(BUCKET)) {
-      const incrementalFilePath = get_manifest_path(message) + "incremental"
+      const incrementalFilePath = get_manifest_path(message) + "/incremental"
       const jobType = await get_job_type(incrementalFilePath)
 
       if (jobType === "bulk") {
