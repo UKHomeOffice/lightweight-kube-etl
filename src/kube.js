@@ -25,7 +25,6 @@ const start_kube_job = async (
   await delete_kube_job(role)
   const {stdout, stderr} = await create_kube_job(job_id, cronjob)
   await label_kube_job(job_id, cronjob, role)
-  console.info(stdout)
 
   if (stderr) {
     console.error(stderr)

@@ -23,6 +23,7 @@ const get_object_hash = async (bucket, key) =>
     .then(object => object.ETag)
 
 const check_manifest = async bucket => {
+
   const manifest = await get_manifest(bucket)
   const res = await Promise.all(
     manifest.data.map(
@@ -34,17 +35,20 @@ const check_manifest = async bucket => {
   return !res.includes(false)
 }
 
-const get_job_type = async (bucket, key) =>
-  client
-    .headObject({Bucket: bucket, Key: key})
-    .promise()
-    .then((err, data) => {
-      const jobType = key.indexOf("incremental") > -1 ? "delta" : "bulk"
-      if (err && err.code === "NotFound") {
-        return jobType == "delta" ? "bulk" : "delta"
-      }
-      return jobType
-    })
+const get_job_type = async (bucket, key) => {
+
+    client
+        .headObject({Bucket: bucket, Key: key})
+        .promise()
+        .then((err, data) => {
+            const jobType = key.indexOf("incremental") > -1 ? "delta" : "bulk"
+            if (err && err.code === "NotFound") {
+                return jobType == "delta" ? "bulk" : "delta"
+            }
+            return jobType
+        });
+
+}
 
 module.exports = {
   get_manifest,
