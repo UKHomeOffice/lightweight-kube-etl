@@ -105,20 +105,23 @@ describe("etl", () => {
 
     jest.spyOn(kube, "start_kube_job").mockReturnValue(true);
 
+    const doneMock = jest.fn();
+
     beforeEach(() => {
 
       kube.start_kube_job.mockReset();
+      doneMock.mockReset();
 
     });
 
     it('should call done function if the message does not contain a manifest key', function () {
 
-        const doneMock = jest.fn(),
-          mockNonManifestMessage = mockMessages[1];
+        const mockNonManifestMessage = mockMessages[1];
 
         return etl.sqs_message_handler(mockNonManifestMessage, doneMock).then(() => {
 
-          expect(doneMock).toHaveBeenCalled();
+          expect(doneMock).toHaveBeenCalledTimes(1);
+          expect(kube.start_kube_job).toHaveBeenCalledTimes(0);
 
         });
 
@@ -126,22 +129,24 @@ describe("etl", () => {
 
     it("should start the kube job if the manifest is good", async () => {
 
-      await etl.sqs_message_handler(mockMessages[0], () => true)
+      await etl.sqs_message_handler(mockMessages[0], doneMock);
 
-      expect(kube.start_kube_job).toHaveBeenCalledTimes(2)
+      expect(doneMock).toHaveBeenCalledTimes(1);
+      expect(kube.start_kube_job).toHaveBeenCalledTimes(2);
 
-    })
+    });
 
     it("should not start the kube job if the manifest is incorrect", async () => {
 
       s3.check_manifest = jest.fn(bucket => Promise.resolve(false));
 
-      await etl.sqs_message_handler(mockMessages[0], () => true)
+      await etl.sqs_message_handler(mockMessages[0], doneMock);
 
-      expect(kube.start_kube_job).toHaveBeenCalledTimes(0)
+      expect(doneMock).toHaveBeenCalledTimes(1);
+      expect(kube.start_kube_job).toHaveBeenCalledTimes(0);
 
-    })
+    });
 
-  })
+  });
 
-})
+});
