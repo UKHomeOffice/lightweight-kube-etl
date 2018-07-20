@@ -9,14 +9,14 @@ function startKubeJob(role, cronjob, job_id=crypto.randomBytes(16).toString("hex
 
     const kubectlCreateCommand = `../../kubectl create job ${cronjob}-${job_id} --from=cronjob/${cronjob}`,
         kubectlLabelCommand = `../../kubectl label job ${cronjob}-${job_id} role=${role}`,
-        kubectlDeleteCommand = `../../kubectl delete job -l role=${role}`;;
+        kubectlDeleteCommand = `../../kubectl delete job -l role=${role}`;
 
     return execPromise(kubectlDeleteCommand)
         .then(() => execPromise(kubectlCreateCommand))
         .then(({ stdout, stderr }) => {
 
             if (stderr) {
-                console.error(stderr)
+                console.error(stderr);
                 throw stderr
             }
         })
