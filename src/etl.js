@@ -4,27 +4,28 @@ const {BUCKET, ROLE} = process.env;
 
 const s3 = require("./s3");
 const kube = require("./kube");
+const R = require("ramda");
 
-const sqs_message_handler = async (message, done) => {
+const sqsMessageHandler = async (message, done) => {
 
-  if (is_manifest(message)) {
+  if (isManifest(message)) {
 
     const isManifestMessage = await s3.check_manifest(BUCKET);
 
     if (isManifestMessage) {
 
-      const incrementalFilePath = get_manifest_path(message) + "/incremental";
+      const incrementalFilePath = getManifestPath(message) + "/incremental";
       const jobType = await s3.get_job_type(incrementalFilePath);
 
       if (jobType === "bulk") {
 
-        await kube.start_kube_job(ROLE, "neo4j-bulk");
-        await kube.start_kube_job(ROLE, "elastic-bulk");
+        await kube.startKubeJob(ROLE, "neo4j-bulk");
+        await kube.startKubeJob(ROLE, "elastic-bulk");
 
       } else if (jobType === "delta") {
 
-        await kube.start_kube_job(ROLE, "neo4j-delta");
-        await kube.start_kube_job(ROLE, "elastic-delta");
+        await kube.startKubeJob(ROLE, "neo4j-delta");
+        await kube.startKubeJob(ROLE, "elastic-delta");
 
       } else {
 
@@ -43,16 +44,8 @@ const sqs_message_handler = async (message, done) => {
 
 };
 
-const is_manifest = a =>
-  JSON.parse(a.Body).Records[0].s3.object.key.indexOf("manifest") > -1
-    ? true
-    : false
+const isManifest = message => (JSON.parse(message.Body).Records[0].s3.object.key.indexOf("manifest") > -1);
 
-const get_manifest_path = a =>
-  JSON.parse(a.Body).Records[0].s3.object.key.split("/manifest.json")[0]
+const getManifestPath = message => (R.head(JSON.parse(message.Body).Records[0].s3.object.key.split("/manifest.json")));
 
-module.exports = {
-  sqs_message_handler,
-  is_manifest,
-  get_manifest_path
-}
+module.exports = { sqsMessageHandler, isManifest, getManifestPath };
