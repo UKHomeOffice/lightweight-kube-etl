@@ -1,37 +1,43 @@
-"use strict"
+"use strict";
 
-const crypto = require("crypto")
-const {promisify} = require("util")
-const exec = promisify(require("child_process").exec)
+const crypto = require("crypto");
+const childProcess = require("child_process");
+const Promise = require("bluebird");
 
-const create_kube_job = (job_id, cronjob) =>
-  exec(
-    `../../kubectl create job ${cronjob}-${job_id} --from=cronjob/${cronjob}`
-  )
 
-const label_kube_job = (job_id, cronjob, role) =>
-  exec(
-    `../../kubectl label job ${cronjob}-${job_id} role=${role}`
-  )
+function startKubeJob(role, cronjob, job_id=crypto.randomBytes(16).toString("hex")) {
 
-const delete_kube_job = role =>
-  exec(`../../kubectl delete job -l role=${role}`)
+    const kubectlCreateCommand = `../../kubectl create job ${cronjob}-${job_id} --from=cronjob/${cronjob}`,
+        kubectlLabelCommand = `../../kubectl label job ${cronjob}-${job_id} role=${role}`,
+        kubectlDeleteCommand = `../../kubectl delete job -l role=${role}`;;
 
-const start_kube_job = async (
-  role,
-  cronjob,
-  job_id = crypto.randomBytes(16).toString("hex")
-) => {
-  await delete_kube_job(role)
-  const {stdout, stderr} = await create_kube_job(job_id, cronjob)
-  await label_kube_job(job_id, cronjob, role)
+    return execPromise(kubectlDeleteCommand)
+        .then(() => execPromise(kubectlCreateCommand))
+        .then(({ stdout, stderr }) => {
 
-  if (stderr) {
-    console.error(stderr)
-    throw stderr
-  }
+            if (stderr) {
+                console.error(stderr)
+                throw stderr
+            }
+        })
+        .then(() => execPromise(kubectlLabelCommand));
 }
 
-module.exports = {
-  start_kube_job
+function execPromise(commandString) {
+
+    return new Promise((resolve, reject) => {
+
+        childProcess.exec(commandString, (error, stdout, stderr) => {
+
+            if (error) {
+
+                return reject(new Error(error));
+            }
+
+            return resolve({ stdout, stderr });
+
+        });
+    });
 }
+
+module.exports = { startKubeJob };

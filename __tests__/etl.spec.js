@@ -1,8 +1,8 @@
 "use strict";
 
-const etl = require("../src/etl"),
-    s3 = require("../src/s3"),
-    kube = require("../src/kube");
+const etl = require("../src/etl");
+const s3 = require("../src/s3");
+const kube = require("../src/kube");
 
 
 jest.mock("../src/s3", () => ({
@@ -83,33 +83,33 @@ const mockMessages = [
 
 describe("etl", () => {
 
-  describe("is_manifest", () => {
+  describe("isManifest", () => {
 
     it("should return true if the message is a manifest", () => {
-      expect(etl.is_manifest(mockMessages[0])).toBeTruthy()
+      expect(etl.isManifest(mockMessages[0])).toBeTruthy()
     })
 
     it("should return false if the message is not a manifest", () => {
-      expect(etl.is_manifest(mockMessages[1])).toBeFalsy()
+      expect(etl.isManifest(mockMessages[1])).toBeFalsy()
     })
   })
 
-  describe("get_manifest_path", () => {
+  describe("getManifestPath", () => {
 
     it("should return true if the message is a manifest", () => {
-      expect(etl.get_manifest_path(mockMessages[0])).toEqual("pending/222222222333")
+      expect(etl.getManifestPath(mockMessages[0])).toEqual("pending/222222222333")
     })
   })
 
-  describe("sqs_message_handler", () => {
+  describe("sqsMessageHandler", () => {
 
-    jest.spyOn(kube, "start_kube_job").mockReturnValue(true);
+    jest.spyOn(kube, "startKubeJob").mockReturnValue(true);
 
     const doneMock = jest.fn();
 
     beforeEach(() => {
 
-      kube.start_kube_job.mockReset();
+      kube.startKubeJob.mockReset();
       doneMock.mockReset();
 
     });
@@ -118,10 +118,10 @@ describe("etl", () => {
 
         const mockNonManifestMessage = mockMessages[1];
 
-        return etl.sqs_message_handler(mockNonManifestMessage, doneMock).then(() => {
+        return etl.sqsMessageHandler(mockNonManifestMessage, doneMock).then(() => {
 
           expect(doneMock).toHaveBeenCalledTimes(1);
-          expect(kube.start_kube_job).toHaveBeenCalledTimes(0);
+          expect(kube.startKubeJob).toHaveBeenCalledTimes(0);
 
         });
 
@@ -129,10 +129,10 @@ describe("etl", () => {
 
     it("should start the kube job if the manifest is good", async () => {
 
-      await etl.sqs_message_handler(mockMessages[0], doneMock);
+      await etl.sqsMessageHandler(mockMessages[0], doneMock);
 
       expect(doneMock).toHaveBeenCalledTimes(1);
-      expect(kube.start_kube_job).toHaveBeenCalledTimes(2);
+      expect(kube.startKubeJob).toHaveBeenCalledTimes(2);
 
     });
 
@@ -140,10 +140,10 @@ describe("etl", () => {
 
       s3.check_manifest = jest.fn(bucket => Promise.resolve(false));
 
-      await etl.sqs_message_handler(mockMessages[0], doneMock);
+      await etl.sqsMessageHandler(mockMessages[0], doneMock);
 
       expect(doneMock).toHaveBeenCalledTimes(1);
-      expect(kube.start_kube_job).toHaveBeenCalledTimes(0);
+      expect(kube.startKubeJob).toHaveBeenCalledTimes(0);
 
     });
 
