@@ -8,7 +8,7 @@ const client = new AWS.S3({
   region: REGION
 })
 
-const get_manifest = async (bucket, manifest_file = "manifest.json") =>
+const getManifest = async (bucket, manifest_file = "manifest.json") =>
   client
     .getObject({Bucket: bucket, Key: manifest_file})
     .promise()
@@ -16,26 +16,26 @@ const get_manifest = async (bucket, manifest_file = "manifest.json") =>
       data: JSON.parse(object.Body.toString("utf8"))
     }))
 
-const get_object_hash = async (bucket, key) =>
+const getObjectHash = async (bucket, key) =>
   client
     .headObject({Bucket: bucket, Key: key})
     .promise()
     .then(object => object.ETag)
 
-const check_manifest = async bucket => {
+const checkManifest = async bucket => {
 
-  const manifest = await get_manifest(bucket)
+  const manifest = await getManifest(bucket)
   const res = await Promise.all(
     manifest.data.map(
       async object =>
-        (await get_object_hash(bucket, object.FileName)) === object.SHA256
+        (await getObjectHash(bucket, object.FileName)) === object.SHA256
     )
   )
 
   return !res.includes(false)
 }
 
-const get_job_type = async (bucket, key) => {
+const getJobType = async (bucket, key) => {
 
     client
         .headObject({Bucket: bucket, Key: key})
@@ -51,7 +51,7 @@ const get_job_type = async (bucket, key) => {
 }
 
 module.exports = {
-  get_manifest,
-  get_object_hash,
-  check_manifest
-}
+  getManifest,
+  getObjectHash,
+  checkManifest
+};

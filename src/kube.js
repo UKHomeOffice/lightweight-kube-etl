@@ -7,9 +7,9 @@ const Promise = require("bluebird");
 
 function startKubeJob(role, cronjob, job_id=crypto.randomBytes(16).toString("hex")) {
 
-    const kubectlCreateCommand = `../../kubectl create job ${cronjob}-${job_id} --from=cronjob/${cronjob}`,
-        kubectlLabelCommand = `../../kubectl label job ${cronjob}-${job_id} role=${role}`,
-        kubectlDeleteCommand = `../../kubectl delete job -l role=${role}`;
+    const kubectlDeleteCommand = `../../kubectl delete job -l role=${role}`,
+        kubectlCreateCommand = `../../kubectl create job ${cronjob}-${job_id} --from=cronjob/${cronjob}`,
+        kubectlLabelCommand = `../../kubectl label job ${cronjob}-${job_id} role=${role}`;
 
     return execPromise(kubectlDeleteCommand)
         .then(() => execPromise(kubectlCreateCommand))
