@@ -38,19 +38,19 @@ describe("s3", async () => {
     AWS.S3.mockRestore()
   })
 
-  describe("get_object_hash", () => {
+  describe("getObjectHash", () => {
     it("should return the Etag of an object", async () => {
       const s3 = require("../src/s3")
-      res = await s3.get_object_hash("foo", "bar")
+      res = await s3.getObjectHash("foo", "bar")
 
       expect(res).toEqual("ba6119931c7010138eec96d9fb75701865908286")
     })
   })
 
-  describe("get_manifest", () => {
+  describe("getManifest", () => {
     it("should get the manifest.json", async () => {
       const s3 = require("../src/s3")
-      res = await s3.get_manifest("foo", "bar")
+      res = await s3.getManifest("foo", "bar")
 
       expect(res).toEqual({
         data: [
@@ -63,10 +63,10 @@ describe("s3", async () => {
     })
   })
 
-  describe("check_manifest", () => {
+  describe("checkManifest", () => {
     it("should return true if there are no unmatched hashes", async () => {
       const s3 = require("../src/s3")
-      res = await s3.check_manifest("foo")
+      res = await s3.checkManifest("foo")
 
       expect(res).toEqual(true)
     })

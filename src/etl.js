@@ -10,7 +10,7 @@ const sqsMessageHandler = async (message, done) => {
 
   if (isManifest(message)) {
 
-    const isManifestMessage = await s3.check_manifest(BUCKET);
+    const isManifestMessage = await s3.checkManifest(BUCKET);
 
     if (isManifestMessage) {
 
@@ -29,7 +29,7 @@ const sqsMessageHandler = async (message, done) => {
 
       } else {
 
-        console.error("jobType wasnt captured correctly");
+        console.error("jobType was not captured correctly");
 
       }
 

@@ -6,7 +6,7 @@ const kube = require("../src/kube");
 
 
 jest.mock("../src/s3", () => ({
-    check_manifest: bucket => Promise.resolve(true),
+    checkManifest: bucket => Promise.resolve(true),
     get_job_type: (bucket, key) => Promise.resolve("delta")
 }));
 jest.mock("../src/kube");
@@ -138,7 +138,7 @@ describe("etl", () => {
 
     it("should not start the kube job if the manifest is incorrect", async () => {
 
-      s3.check_manifest = jest.fn(bucket => Promise.resolve(false));
+      s3.checkManifest = jest.fn(bucket => Promise.resolve(false));
 
       await etl.sqsMessageHandler(mockMessages[0], doneMock);
 
