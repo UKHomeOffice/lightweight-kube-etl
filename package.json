@@ -7,7 +7,7 @@
     "start": "node index",
     "test": "jest --coverage __tests__"
   },
-  "author": "Chris Nesbitt-Smith",
+  "author": "dacc@ukhomeoffice",
   "license": "MIT",
   "dependencies": {
     "aws-sdk": "^2.224.1",
