@@ -10,6 +10,9 @@ jest.mock("../src/s3", () => ({
     getJobType: (bucket, key) => Promise.resolve("delta")
 }));
 jest.mock("../src/kube");
+jest.mock("../src/lastIngestRepository", () => ({
+    insert: () => Promise.resolve()
+}));
 
 const mockMessages = [
   {
