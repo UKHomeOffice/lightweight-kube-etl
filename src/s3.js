@@ -53,5 +53,6 @@ const getJobType = async (bucket, key) => {
 module.exports = {
   getManifest,
   getObjectHash,
-  checkManifest
+  checkManifest,
+  getJobType
 };

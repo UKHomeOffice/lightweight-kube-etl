@@ -7,7 +7,7 @@ const kube = require("../src/kube");
 
 jest.mock("../src/s3", () => ({
     checkManifest: bucket => Promise.resolve(true),
-    get_job_type: (bucket, key) => Promise.resolve("delta")
+    getJobType: (bucket, key) => Promise.resolve("delta")
 }));
 jest.mock("../src/kube");
 
