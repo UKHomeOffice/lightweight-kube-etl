@@ -1,4 +1,4 @@
-"use strict"
+"use strict";
 
 const {BUCKET, ROLE} = process.env;
 
@@ -15,7 +15,7 @@ const sqsMessageHandler = async (message, done) => {
     if (isManifestMessage) {
 
       const incrementalFilePath = getManifestPath(message) + "/incremental";
-      const jobType = await s3.get_job_type(incrementalFilePath);
+      const jobType = await s3.getJobType(incrementalFilePath);
 
       if (jobType === "bulk") {
 
@@ -39,6 +39,7 @@ const sqsMessageHandler = async (message, done) => {
 
     }
   }
+
 
   return done();
 
