@@ -16,6 +16,6 @@ const createConsumer = handler =>
     queueUrl: QUEUE,
     handleMessage: handler,
     sqs: client
-  })
+  });
 
 module.exports = { createConsumer };
