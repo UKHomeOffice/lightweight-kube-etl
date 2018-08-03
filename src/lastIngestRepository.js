@@ -3,9 +3,9 @@
 const Promise = require("bluebird");
 const MongoClient = Promise.promisifyAll(require('mongodb')).MongoClient;
 
-const { MONGO_HOST, MONGO_PORT, DB_NAME, MONGO_USER, MONGO_PASSWORD } = process.env,
-    connectionUrl = `mongodb://${MONGO_USER}:${MONGO_PASSWORD}@${MONGO_HOST}:${MONGO_PORT}/${DB_NAME}`;
-
+const { MONGO_CONN } = process.env;//,
+    // connectionUrl = `mongodb://${MONGO_USER}:${MONGO_PASSWORD}@${MONGO_HOST}:${MONGO_PORT}/${DB_NAME}`;
+console.log(MONGO_CONN);
 let mongoConnection = null;
 
 
@@ -36,7 +36,7 @@ function getCollection() {
 
 function connect() {
 
-    return MongoClient.connect(connectionUrl, { useNewUrlParser: true }).then((client) =>  {
+    return MongoClient.connect(MONGO_CONN + "entitysearch", { useNewUrlParser: true }).then((client) =>  {
 
         return client.db("entitysearch");
 
@@ -44,5 +44,6 @@ function connect() {
 
 }
 
+mongodb://entitysearch:pleasechangeme@mongo:27017/
 
 module.exports = { insert };
