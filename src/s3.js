@@ -40,33 +40,17 @@ const isHashOk = R.curry((bucket, fileMetadata) => {
 });
 
 const getJobType = async (bucket, key) => {
-
-    return client.listObjectsAsync({ Bucket: bucket, Prefix: key })
-        .then((response) => {
-
-            const objectMetadata = response.Contents;
-
-            /*
-            [
-                ...
-                {
-                    Key: 'pending/1532355830/address/address_headers.csv.gz',
-                    LastModified: 2018-08-01T13:32:16.000Z,
-                    ETag: '"49cc9494d2c176269fc20e42b05ebd9c"',
-                    Size: 120,
-                    StorageClass: 'STANDARD'
-                },
-                ...
-            ]
-             */
-
-            const jobTypeFilePath = R.path(["Key"], R.head(R.filter(isTxtFileObject, objectMetadata)));
-
-            return getJobTypeFromPath(jobTypeFilePath);
-
-        });
-
-};
+  client
+    .headObject({Bucket: bucket, Key: key})
+    .promise()
+    .then(data => {
+      const jobType = key.indexOf("incremental") > -1 ? "delta" : "bulk"
+      if (data) {
+        return jobType == "delta" ? "bulk" : "delta"
+      }
+      return jobType
+    })
+}
 
 const getJobTypeFromPath = (path) => {
 
