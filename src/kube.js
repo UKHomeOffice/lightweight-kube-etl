@@ -23,6 +23,13 @@ function startKubeJob(role, cronjob, job_id=crypto.randomBytes(16).toString("hex
         .then(() => execPromise(kubectlLabelCommand));
 }
 
+function getPods() {
+
+    const kubectlGetPodsCommand = `../../kubectl get pods`;
+
+    return execPromise(kubectlGetPodsCommand);
+}
+
 function execPromise(commandString) {
 
     return new Promise((resolve, reject) => {
@@ -40,4 +47,4 @@ function execPromise(commandString) {
     });
 }
 
-module.exports = { startKubeJob };
+module.exports = { startKubeJob, getPods };

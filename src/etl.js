@@ -9,50 +9,44 @@ const lastIngestRepository = require("./lastIngestRepository");
 
 const sqsMessageHandler = async (message, done) => {
 
-  if (isManifest(message)) {
+    if (!isManifest(message)) {
 
-    const isManifestMessage = await s3.checkManifest(BUCKET);
-
-    if (isManifestMessage) {
-
-      const incrementalFilePath = getManifestPath(message) + "/incremental";
-      const jobType = await s3.getJobType(incrementalFilePath);
-
-      if (jobType === "bulk") {
-
-        await kube.startKubeJob(ROLE, "neo4j-bulk");
-        await kube.startKubeJob(ROLE, "elastic-bulk");
-
-      } else if (jobType === "delta") {
-
-        await kube.startKubeJob(ROLE, "neo4j-delta");
-        await kube.startKubeJob(ROLE, "elastic-delta");
-
-      } else {
-
-        console.error("jobType was not captured correctly");
-
-      }
-
-    } else {
-
-      console.info("Files don't yet match the manifest");
-
+        return done();
     }
-  }
 
-  return lastIngestRepository
-      .insert({ "ingest": getIngestName(message), "loadDate": Date.now() })
-      .then(done);
+    return s3.checkManifest(BUCKET, getUploadPath(message)).then((checksumsOk) => {
+
+        if (!checksumsOk) {
+
+            return;
+        }
+
+        return s3.getJobType(BUCKET, getIngestPath(message))
+            // .then(startIngestionJobs)
+            .then(() => lastIngestRepository.insert({ "ingest": getIngestName(message), "loadDate": Date.now() }))
+            .then(done);
+            // .catch(console.log);
+
+    });
 
 };
 
-const isManifest = message => (getUploadPath(message).indexOf("manifest") > -1);
+function startIngestionJobs(jobType) {
 
-const getManifestPath = message => (R.head(getUploadPath(message).split("/manifest.json")));
-
-const getIngestName = message => getUploadPath(message).split("/")[1];
+    console.log(jobType)
+    return Promise.all([
+        kube.startKubeJob(ROLE, "neo4j-" + jobType),
+        kube.startKubeJob(ROLE, "elastic-" + jobType)
+    ]);
+}
 
 const getUploadPath = (message) => (JSON.parse(message.Body).Records[0].s3.object.key);
 
-module.exports = { sqsMessageHandler, isManifest, getManifestPath };
+const getIngestPath = message => (R.head(getUploadPath(message).split("/manifest.json")));
+
+const isManifest = message => (getUploadPath(message).indexOf("manifest") > -1);
+
+const getIngestName = message => getUploadPath(message).split("/")[1];
+
+
+module.exports = { sqsMessageHandler, isManifest, getIngestPath };
