@@ -80,7 +80,7 @@ const getJobTypeFromPath = (path) => {
     }
 
     return jobType;
-}
+};
 
 const isTxtFileObject = R.compose(R.test(/.txt$/), R.path(["Key"]));
 

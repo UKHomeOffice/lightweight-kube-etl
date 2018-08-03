@@ -23,6 +23,7 @@ const sqsMessageHandler = async (message, done) => {
 
         return s3.getJobType(BUCKET, getIngestPath(message))
             // .then(startIngestionJobs)
+            .then((jobType) => {console.log(jobType); return jobType;})
             .then(() => lastIngestRepository.insert({ "ingest": getIngestName(message), "loadDate": Date.now() }))
             .then(done);
             // .catch(console.log);
@@ -49,4 +50,4 @@ const isManifest = message => (getUploadPath(message).indexOf("manifest") > -1);
 const getIngestName = message => getUploadPath(message).split("/")[1];
 
 
-module.exports = { sqsMessageHandler, isManifest, getIngestPath };
+module.exports = { sqsMessageHandler, isManifest };
