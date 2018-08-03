@@ -7,13 +7,13 @@ COPY package.json package-lock.json ./
 RUN npm i
 COPY . .
 RUN npm test
-#RUN npm prune --production
-
+RUN npm prune --production
 
 FROM node:alpine as runner
 COPY --from=builder /app/index.js /app/package.json /app/
 COPY --from=builder /app/src /app/src
 COPY --from=builder /app/node_modules /app/node_modules
+COPY --from=builder /app/kubectl /app/kubectl
 WORKDIR /app
 USER 1000
 CMD npm start
