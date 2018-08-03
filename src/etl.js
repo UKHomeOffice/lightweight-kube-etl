@@ -12,10 +12,10 @@ const sqsMessageHandler = async (message, done) => {
     return done()
   }
 
-  const incrementalFilePath = getManifestPath(message) + "/incremental.txt"
+  const incrementalFilePath = getIngestPath(message) + "/incremental.txt"
   const jobType = await s3.getJobType(BUCKET, incrementalFilePath)
-  console.info(`jobType: ${jobType}`);
-  await startIngestionJobs(jobType);
+  console.info(`jobType: ${jobType}`)
+  await startIngestionJobs(jobType)
   await lastIngestRepository.insert({
     ingest: getIngestName(message),
     loadDate: Date.now()
@@ -24,13 +24,11 @@ const sqsMessageHandler = async (message, done) => {
   // return done()
 }
 
-function startIngestionJobs(jobType) {
-  console.log(jobType)
-  return Promise.all([
+const startIngestionJobs = jobType =>
+  Promise.all([
     kube.startKubeJob(ROLE, "neo4j-" + jobType),
     kube.startKubeJob(ROLE, "elastic-" + jobType)
   ])
-}
 
 const getUploadPath = message =>
   JSON.parse(message.Body).Records[0].s3.object.key
@@ -42,4 +40,4 @@ const isManifest = message => getUploadPath(message).indexOf("manifest") > -1
 
 const getIngestName = message => getUploadPath(message).split("/")[1]
 
-module.exports = {sqsMessageHandler, isManifest}
+module.exports = {sqsMessageHandler, isManifest, getIngestPath}
