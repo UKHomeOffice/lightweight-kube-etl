@@ -1,15 +1,32 @@
-const AWS = require("aws-sdk")
-//
-describe("s3", async () => {
-  beforeAll(() => {
-    AWS.S3 = jest.fn().mockImplementation(() => ({
-      headObject: (bucket, key) => ({
+const s3 = require("../src/s3")
+
+describe("s3", () => {
+  afterAll(() => s3.client.mockClear())
+
+  describe("getObjectHash", () => {
+    it("should return the Etag of an object", async () => {
+      s3.client.headObject = jest.fn().mockImplementation(() => ({
         promise: () =>
           Promise.resolve({
             ETag: "ba6119931c7010138eec96d9fb75701865908286"
           })
-      }),
-      getObject: (bucket, key) => ({
+      }))
+
+      res = await s3.getObjectHash("foo", "bar")
+      expect(res).toEqual("ba6119931c7010138eec96d9fb75701865908286")
+      expect(true).toEqual(true)
+    })
+  })
+
+  describe("getManifest", () => {
+    it("should get the manifest.json", async () => {
+      s3.client.headObject = jest.fn().mockImplementation(() => ({
+        promise: () =>
+          Promise.resolve({
+            ETag: "ba6119931c7010138eec96d9fb75701865908286"
+          })
+      }))
+      s3.client.getObject = jest.fn().mockImplementation(() => ({
         promise: () =>
           Promise.resolve({
             AcceptRanges: "bytes",
@@ -30,48 +47,65 @@ describe("s3", async () => {
               ])
             )
           })
+      }))
+
+      res = await s3.getManifest("foo", "bar")
+      expect(res).toEqual({
+        data: [
+          {
+            FileName: "testfile1a1.csv.gz",
+            SHA256: "ba6119931c7010138eec96d9fb75701865908286"
+          }
+        ]
       })
-    }))
-  })
-
-  afterAll(() => {
-    AWS.S3.mockRestore()
-  })
-
-
-
-  describe("getObjectHash", () => {
-    it("should return the Etag of an object", async () => {
-      // const s3 = require("../src/s3")
-      // res = await s3.getObjectHash("foo", "bar") //?
-      //
-      // expect(res).toEqual("ba6119931c7010138eec96d9fb75701865908286")
-      // expect(true).toEqual(true)
     })
   })
-  //
-  // describe("getManifest", () => {
-  //   it("should get the manifest.json", async () => {
-  //     const s3 = require("../src/s3")
-  //     res = await s3.getManifest("foo", "bar")
-  //
-  //     expect(res).toEqual({
-  //       data: [
-  //         {
-  //           FileName: "testfile1a1.csv.gz",
-  //           SHA256: "ba6119931c7010138eec96d9fb75701865908286"
-  //         }
-  //       ]
-  //     })
-  //   })
-  // })
-  //
-  // describe("checkManifest", () => {
-  //   it("should return true if there are no unmatched hashes", async () => {
-  //     const s3 = require("../src/s3")
-  //     res = await s3.checkManifest("foo")
-  //
-  //     expect(res).toEqual(true)
-  //   })
-  // })
+
+  describe("getJobType", () => {
+    it("should return null if a bulk.txt file is not found in the manifest.json directory", async () => {
+      s3.client.headObject = jest.fn().mockImplementation(() => ({
+        promise: () => Promise.resolve(null)
+      }))
+      res = await s3.getJobType("foo", "peniding/123/bulk.txt") //?
+      expect(res).toEqual(null)
+    })
+
+    it("should return null if a incremental.txt file is not found in the manifest.json directory", async () => {
+      s3.client.headObject = jest.fn().mockImplementation(() => ({
+        promise: () => Promise.resolve(null)
+      }))
+      res = await s3.getJobType("foo", "peniding/123/incremental.txt") //?
+      expect(res).toEqual(null)
+    })
+
+    it("should return null if an unknown file is found in the manifest.json directory", async () => {
+      s3.client.headObject = jest.fn().mockImplementation(() => ({
+        promise: () => Promise.resolve(null)
+      }))
+      res = await s3.getJobType("foo", "peniding/123/foo.txt") //?
+      expect(res).toEqual(null)
+    })
+
+    it("should return delta if a incremental.txt file is found in the manifest.json directory", async () => {
+      s3.client.headObject = jest.fn().mockImplementation(() => ({
+        promise: () =>
+          Promise.resolve({
+            ETag: "ba6119931c7010138eec96d9fb75701865908286"
+          })
+      }))
+      res = await s3.getJobType("foo", "pending/123/incremental.txt") //?
+      expect(res).toEqual("delta")
+    })
+
+    it("should return bulk if a bulk.txt file is found in the manifest.json directory", async () => {
+      s3.client.headObject = jest.fn().mockImplementation(() => ({
+        promise: () =>
+          Promise.resolve({
+            ETag: "ba6119931c7010138eec96d9fb75701865908286"
+          })
+      }))
+      res = await s3.getJobType("foo", "pending/123/bulk.txt") //?
+      expect(res).toEqual("bulk")
+    })
+  })
 })

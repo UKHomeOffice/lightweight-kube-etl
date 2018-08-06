@@ -7,7 +7,7 @@ COPY package.json package-lock.json ./
 RUN npm i
 COPY . .
 RUN npm test
-#RUN npm prune --production
+# RUN npm prune --production
 
 FROM node:alpine as runner
 COPY --from=builder /app/index.js /app/package.json /app/

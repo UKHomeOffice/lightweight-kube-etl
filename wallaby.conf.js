@@ -5,7 +5,7 @@ module.exports = function(wallaby) {
         pattern: "node_modules/babel-polyfill/dist/polyfill.js",
         instrument: false
       },
-      "**/*.js",
+      "src/**/*.js",
       "!__tests__/*.spec.js",
       "!node_modules/**/*.*"
     ],
@@ -15,7 +15,7 @@ module.exports = function(wallaby) {
     },
     testFramework: "jest",
     compilers: {
-      '**/*.js': wallaby.compilers.babel()
+      'src/**/*.js': wallaby.compilers.babel()
     },
     workers: {
       recycle: true
