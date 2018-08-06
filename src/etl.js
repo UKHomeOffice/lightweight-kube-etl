@@ -10,9 +10,9 @@ const mongodb = require("./mongodb")
 const sqsMessageHandler = async (message, done) => {
   if (!isManifest(message)) return done()
 
-  const incrementalFilePath = getIngestPath(message) + "/incremental.txt"
+  const incrementalFilePath = getIngestPath(message)
   const jobType = await s3.getJobType(BUCKET, incrementalFilePath)
-  if (jobType === null) return done()
+  if (jobType === undefined) return done()
   console.info(`jobType: ${jobType}`)
 
   await startIngestionJobs(jobType).catch(console.error)
