@@ -17,7 +17,7 @@ const sqsMessageHandler = async (message, done) => {
 
   await startIngestionJobs(jobType).catch(console.error)
   console.info(`insert into Mongo date: ${jobType}`)
-  
+
   await mongodb.insert({
     ingest: getIngestName(message),
     loadDate: Date.now()
