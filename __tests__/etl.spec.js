@@ -1,25 +1,21 @@
-"use strict";
+"use strict"
 
-const etl = require("../src/etl");
-const s3 = require("../src/s3");
-const kube = require("../src/kube");
+const etl = require("../src/etl")
+const s3 = require("../src/s3")
+const mongodb = require("../src/mongodb")
+const kube = require("../src/kube")
+jest.mock("../src/kube")
 
-
-jest.mock("../src/s3", () => ({
-    checkManifest: bucket => Promise.resolve(true),
-    getJobType: (bucket, key) => Promise.resolve("delta")
-}));
-jest.mock("../src/kube");
-jest.mock("../src/lastIngestRepository", () => ({
-    insert: () => Promise.resolve()
-}));
+s3.checkManifest = jest.fn().mockImplementation(() => Promise.resolve(true))
+s3.getJobType = jest.fn().mockImplementation(() => Promise.resolve("delta"))
+mongodb.insert= jest.fn().mockImplementation(() => Promise.resolve())
 
 const mockMessages = [
   {
     MessageId: "2da4371e-b831-4b30-b8f6-eb815e25c2de",
     ReceiptHandle: "xxxxx",
     MD5OfBody: "xxxxx",
-    Body:`{
+    Body: `{
       "Records":[
         {
           "eventVersion":"2.0",
@@ -80,16 +76,12 @@ const mockMessages = [
       SentTimestamp: "1531751904192"
     }
   }
-];
-
-
+]
 
 describe("etl", () => {
-
   describe("isManifest", () => {
-
     it("should return true if the message is a manifest", () => {
-        expect(true).toEqual(true);
+      expect(true).toEqual(true)
       expect(etl.isManifest(mockMessages[0])).toBeTruthy()
     })
 
@@ -99,54 +91,44 @@ describe("etl", () => {
   })
 
   describe("getIngestPath", () => {
-
     it("should return true if the message is a manifest", () => {
       expect(etl.getIngestPath(mockMessages[0])).toEqual("pending/222222222333")
     })
   })
 
   describe("sqsMessageHandler", () => {
-
-    jest.spyOn(kube, "startKubeJob").mockReturnValue(true);
-
-    const doneMock = jest.fn();
+    jest.spyOn(kube, "startKubeJob").mockReturnValue(true)
+    const doneMock = jest.fn()
 
     beforeEach(() => {
+      kube.startKubeJob.mockReset()
+      doneMock.mockReset()
+    })
 
-      kube.startKubeJob.mockReset();
-      doneMock.mockReset();
+    it("should call done function if the message does not contain a manifest key", function() {
+      const mockNonManifestMessage = mockMessages[1]
+      return etl
+        .sqsMessageHandler(mockNonManifestMessage, doneMock)
+        .then(() => {
+          expect(doneMock).toHaveBeenCalledTimes(1)
+          expect(kube.startKubeJob).toHaveBeenCalledTimes(0)
+        })
+    })
 
-    });
+    it("should start the kube job if the manifest is good", async () => {
+      await etl.sqsMessageHandler(mockMessages[0], doneMock)
 
-    it('should call done function if the message does not contain a manifest key', function () {
+      expect(doneMock).toHaveBeenCalledTimes(1)
+      expect(kube.startKubeJob).toHaveBeenCalledTimes(2)
+    })
 
-        const mockNonManifestMessage = mockMessages[1];
-        return etl.sqsMessageHandler(mockNonManifestMessage, doneMock).then(() => {
-          expect(doneMock).toHaveBeenCalledTimes(1);
-          expect(kube.startKubeJob).toHaveBeenCalledTimes(0);
-        });
-    });
-
-    // it("should start the kube job if the manifest is good", async () => {
-    //
-    //   await etl.sqsMessageHandler(mockMessages[0], doneMock);
-    //
-    //   expect(doneMock).toHaveBeenCalledTimes(1);
-    //   expect(kube.startKubeJob).toHaveBeenCalledTimes(2);
-    //
-    // });
-
+    // TODO
     // it("should not start the kube job if the manifest is incorrect", async () => {
+    //   s3.checkManifest = jest.fn(bucket => Promise.resolve(false))
+    //   await etl.sqsMessageHandler(mockMessages[0], doneMock)
     //
-    //   s3.checkManifest = jest.fn(bucket => Promise.resolve(false));
-    //
-    //   await etl.sqsMessageHandler(mockMessages[0], doneMock);
-    //
-    //   expect(doneMock).toHaveBeenCalledTimes(1);
-    //   expect(kube.startKubeJob).toHaveBeenCalledTimes(0);
-    //
-    // });
-
-  });
-
-});
+    //   expect(doneMock).toHaveBeenCalledTimes(1)
+    //   expect(kube.startKubeJob).toHaveBeenCalledTimes(0)
+    // })
+  })
+})

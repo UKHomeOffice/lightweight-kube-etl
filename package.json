@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node index",
     "test": "jest --coverage __tests__",
+    "test-watch": "jest --watch __tests__",
     "precommit": "pretty-quick --staged"
   },
   "author": "dacc@ukhomeoffice",

@@ -5,23 +5,25 @@ const {BUCKET, ROLE} = process.env
 const s3 = require("./s3")
 const kube = require("./kube")
 const R = require("ramda")
-const lastIngestRepository = require("./lastIngestRepository")
+const mongodb = require("./mongodb")
 
 const sqsMessageHandler = async (message, done) => {
-  if (!isManifest(message)) {
-    return done()
-  }
+  if (!isManifest(message)) return done()
 
   const incrementalFilePath = getIngestPath(message) + "/incremental.txt"
   const jobType = await s3.getJobType(BUCKET, incrementalFilePath)
+  if (jobType === null) return done()
   console.info(`jobType: ${jobType}`)
-  await startIngestionJobs(jobType)
-  await lastIngestRepository.insert({
+
+  await startIngestionJobs(jobType).catch(console.error)
+  console.info(`insert into Mongo date: ${jobType}`)
+  
+  await mongodb.insert({
     ingest: getIngestName(message),
     loadDate: Date.now()
   })
 
-  // return done()
+  return done()
 }
 
 const startIngestionJobs = jobType =>

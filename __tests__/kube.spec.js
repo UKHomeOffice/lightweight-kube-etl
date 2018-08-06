@@ -2,18 +2,15 @@
 
 const kube = require("../src/kube")
 const childProcess = require("child_process")
-
-jest.mock("child_process", () => ({
-  exec: jest.fn((command, callback) => {
-    return callback(null, {stdout: "exec success", stderr: null})
-  })
-}))
+childProcess.exec = jest
+  .fn()
+  .mockImplementation((command, callback) =>
+    callback(null, {stdout: "exec success", stderr: null})
+  )
 
 describe("kube", () => {
   describe("startKubeJob", () => {
-    beforeEach(() => {
-      childProcess.exec.mockClear()
-    })
+    beforeEach(() => childProcess.exec.mockClear())
 
     it("should delete jobs with the same role", () => {
       expect(true).toEqual(true)
