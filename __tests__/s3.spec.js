@@ -62,50 +62,28 @@ describe("s3", () => {
   })
 
   describe("getJobType", () => {
-    it("should return null if a bulk.txt file is not found in the manifest.json directory", async () => {
-      s3.client.headObject = jest.fn().mockImplementation(() => ({
-        promise: () => Promise.reject(new Error('Some error'))
-      }))
-      res = await s3.getJobType("foo", "peniding/123/bulk.txt") //?
-      expect(res).toEqual(null)
-    })
-
-    it("should return null if a incremental.txt file is not found in the manifest.json directory", async () => {
-      s3.client.headObject = jest.fn().mockImplementation(() => ({
-        promise: () => Promise.reject(new Error('Some error'))
-      }))
-      res = await s3.getJobType("foo", "peniding/123/incremental.txt") //?
-      expect(res).toEqual(null)
-    })
-
-    it("should return null if an unknown file is found in the manifest.json directory", async () => {
-      s3.client.headObject = jest.fn().mockImplementation(() => ({
-        promise: () => Promise.reject(new Error('Some error'))
-      }))
-      res = await s3.getJobType("foo", "peniding/123/foo.txt") //?
-      expect(res).toEqual(null)
-    })
-
-    it("should return delta if a incremental.txt file is found in the manifest.json directory", async () => {
-      s3.client.headObject = jest.fn().mockImplementation(() => ({
-        promise: () =>
-          Promise.resolve({
-            ETag: "ba6119931c7010138eec96d9fb75701865908286"
-          })
-      }))
-      res = await s3.getJobType("foo", "pending/123/incremental.txt") //?
-      expect(res).toEqual("delta")
-    })
-
     it("should return bulk if a bulk.txt file is found in the manifest.json directory", async () => {
-      s3.client.headObject = jest.fn().mockImplementation(() => ({
-        promise: () =>
-          Promise.resolve({
-            ETag: "ba6119931c7010138eec96d9fb75701865908286"
-          })
-      }))
-      res = await s3.getJobType("foo", "pending/123/bulk.txt") //?
+      s3.client.headObject = jest
+        .fn()
+        .mockImplementationOnce(() => ({
+          promise: () => Promise.reject(new Error("Some error"))
+        }))
+        .mockImplementationOnce(() => ({
+          promise: () =>
+            Promise.resolve({
+              ETag: "ba6119931c7010138eec96d9fb75701865908286"
+            })
+        }))
+      res = await s3.getJobType("foo", "pending/123") //?
       expect(res).toEqual("bulk")
+    })
+
+    it("should return undefined if none of the jobs files are  found in the manifest.json directory", async () => {
+      s3.client.headObject = jest.fn().mockImplementation(() => ({
+        promise: () => Promise.reject(new Error("Some error"))
+      }))
+      res = await s3.getJobType("foo", "pending/123") //?
+      expect(res).toEqual(undefined)
     })
   })
 })
