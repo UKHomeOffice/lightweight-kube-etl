@@ -64,7 +64,7 @@ describe("s3", () => {
   describe("getJobType", () => {
     it("should return null if a bulk.txt file is not found in the manifest.json directory", async () => {
       s3.client.headObject = jest.fn().mockImplementation(() => ({
-        promise: () => Promise.resolve(null)
+        promise: () => Promise.reject(new Error('Some error'))
       }))
       res = await s3.getJobType("foo", "peniding/123/bulk.txt") //?
       expect(res).toEqual(null)
@@ -72,7 +72,7 @@ describe("s3", () => {
 
     it("should return null if a incremental.txt file is not found in the manifest.json directory", async () => {
       s3.client.headObject = jest.fn().mockImplementation(() => ({
-        promise: () => Promise.resolve(null)
+        promise: () => Promise.reject(new Error('Some error'))
       }))
       res = await s3.getJobType("foo", "peniding/123/incremental.txt") //?
       expect(res).toEqual(null)
@@ -80,7 +80,7 @@ describe("s3", () => {
 
     it("should return null if an unknown file is found in the manifest.json directory", async () => {
       s3.client.headObject = jest.fn().mockImplementation(() => ({
-        promise: () => Promise.resolve(null)
+        promise: () => Promise.reject(new Error('Some error'))
       }))
       res = await s3.getJobType("foo", "peniding/123/foo.txt") //?
       expect(res).toEqual(null)
