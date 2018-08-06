@@ -40,10 +40,15 @@ const getJobType = async (bucket, key) => {
   const keyJobType = key.indexOf("incremental") > -1 ? "delta" : "bulk"
 
   if (key.indexOf("incremental") > -1 || key.indexOf("bulk") > -1) {
-    isFound =
-      (await client.headObject({Bucket: bucket, Key: key}).promise()) == null
-        ? false
-        : true //?
+    try {
+      isFound =
+        (await client.headObject({Bucket: bucket, Key: key}).promise()) == null
+          ? false
+          : true //?
+    } catch (e) {
+      console.log(`Exception retrieveing file metadata: ${e.message}`)//?
+      isFound = false
+    }
   }
 
   return isFound ? keyJobType : null //?
