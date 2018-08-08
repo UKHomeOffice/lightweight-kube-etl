@@ -125,7 +125,3 @@ spec:
             value: 'myjob'
 
 ```
-
-# Diagrams of the process:
-
-Sequence: https://tinyurl.com/y7l479sv
