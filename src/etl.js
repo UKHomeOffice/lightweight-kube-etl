@@ -36,7 +36,7 @@ const getUploadPath = message =>
   JSON.parse(message.Body).Records[0].s3.object.key
 
 const getIngestPath = message =>
-  R.head(getUploadPath(message).split("/manifest.json"))
+    R.head(getUploadPath(message).split("/manifest.json"))
 
 const isManifest = message => getUploadPath(message).indexOf("manifest") > -1
 
