@@ -46,7 +46,7 @@ const isFileFound = async (bucket, keyPath, file) => {
         ? false
         : true //?
   } catch (e) {
-    console.log(`Exception retrieveing file metadata: ${e.message}`) //?
+    console.log(`Exception retrieving file metadata: ${e.message}`) //?
   }
   return isFound
 }

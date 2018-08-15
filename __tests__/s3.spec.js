@@ -14,7 +14,7 @@ describe("s3", () => {
 
       res = await s3.getObjectHash("foo", "bar")
       expect(res).toEqual("ba6119931c7010138eec96d9fb75701865908286")
-      expect(true).toEqual(true)
+
     })
   })
 

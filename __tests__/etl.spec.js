@@ -81,7 +81,7 @@ const mockMessages = [
 describe("etl", () => {
   describe("isManifest", () => {
     it("should return true if the message is a manifest", () => {
-      expect(true).toEqual(true)
+
       expect(etl.isManifest(mockMessages[0])).toBeTruthy()
     })
 

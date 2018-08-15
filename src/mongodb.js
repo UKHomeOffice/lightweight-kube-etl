@@ -22,4 +22,19 @@ function connect() {
   })
 }
 
+function getCollection() {
+
+    if (mongoConnection) {
+
+        return Promise.resolve(mongoConnection.collection("es_load_dates"));
+    }
+
+    return connect().then((connection) => {
+
+        mongoConnection = connection;
+
+        return mongoConnection.collection('es_load_dates');
+    });
+}
+
 module.exports = {insert}

@@ -4,14 +4,17 @@ const crypto = require("crypto")
 const childProcess = require("child_process")
 const Promise = require("bluebird")
 
+const TOKEN = process.env.KUBE_SERVICE_ACCOUNT_TOKEN;
+
 function startKubeJob(
   role,
   cronjob,
   job_id = crypto.randomBytes(16).toString("hex")
 ) {
-  const kubectlDeleteCommand = `/app/kubectl delete job -l role=${role}`,
-    kubectlCreateCommand = `/app/kubectl create job ${cronjob}-${job_id} --from=cronjob/${cronjob}`,
-    kubectlLabelCommand = `/app/kubectl label job ${cronjob}-${job_id} role=${role}`
+
+  const kubectlDeleteCommand = `/app/kubectl --token ${TOKEN} delete job -l role=${role}`,
+    kubectlCreateCommand = `/app/kubectl --token ${TOKEN} create job ${cronjob}-${job_id} --from=cronjob/${cronjob}`,
+    kubectlLabelCommand = `/app/kubectl --token ${TOKEN} label job ${cronjob}-${job_id} role=${role}`
 
   return execPromise(kubectlDeleteCommand)
     .then(() => execPromise(kubectlCreateCommand))
