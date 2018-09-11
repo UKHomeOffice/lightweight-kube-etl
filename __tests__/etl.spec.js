@@ -120,6 +120,10 @@ describe("etl", () => {
 
       expect(doneMock).toHaveBeenCalledTimes(1)
       expect(kube.startKubeJob).toHaveBeenCalledTimes(2)
+      expect(kube.startKubeJob.mock.calls[0][0]).toBe('neo4j-delta')
+      expect(kube.startKubeJob.mock.calls[0][1]).toBe('222222222333')
+      expect(kube.startKubeJob.mock.calls[1][0]).toBe('elastic-delta')
+      expect(kube.startKubeJob.mock.calls[1][1]).toBe('222222222333')
     })
 
     // TODO

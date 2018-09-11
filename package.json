@@ -5,8 +5,8 @@
   "main": "index.js",
   "scripts": {
     "start": "node index",
-    "test": "KUBE_SERVICE_ACCOUNT_TOKEN=MOCK_TOKEN jest --coverage __tests__",
-    "test-watch": "KUBE_SERVICE_ACCOUNT_TOKEN=MOCK_TOKEN jest --watch __tests__",
+    "test": "KUBE_SERVICE_ACCOUNT_TOKEN=MOCK_TOKEN ROLE=mockRole jest --coverage __tests__",
+    "test-watch": "KUBE_SERVICE_ACCOUNT_TOKEN=MOCK_TOKEN ROLE=mockRole jest --watch __tests__",
     "precommit": "pretty-quick --staged"
   },
   "author": "dacc@ukhomeoffice",

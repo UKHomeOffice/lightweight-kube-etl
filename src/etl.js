@@ -1,6 +1,6 @@
 "use strict"
 
-const {BUCKET, ROLE} = process.env
+const {BUCKET} = process.env
 
 const s3 = require("./s3")
 const kube = require("./kube")
@@ -8,14 +8,18 @@ const R = require("ramda")
 const mongodb = require("./mongodb")
 
 const sqsMessageHandler = async (message, done) => {
+
   if (!isManifest(message)) return done()
 
-  const incrementalFilePath = getIngestPath(message)
-  const jobType = await s3.getJobType(BUCKET, incrementalFilePath)
+  const ingestPath = getIngestPath(message)
+  const jobType = await s3.getJobType(BUCKET, ingestPath)
+
   if (jobType === undefined) return done()
+
   console.info(`jobType: ${jobType}`)
 
-  await startIngestionJobs(jobType).catch(console.error)
+  await startIngestionJobs(jobType, ingestPath).catch(console.error)
+
   console.info(`insert into Mongo date: ${jobType}`)
 
   await mongodb.insert({
@@ -26,11 +30,15 @@ const sqsMessageHandler = async (message, done) => {
   return done()
 }
 
-const startIngestionJobs = jobType =>
-  Promise.all([
-    kube.startKubeJob(ROLE, "neo4j-" + jobType),
-    kube.startKubeJob(ROLE, "elastic-" + jobType)
-  ])
+const startIngestionJobs = (jobType, ingestPath) => {
+
+    const ingestTimestamp = R.last(ingestPath.split("/"));
+
+    return Promise.all([
+        kube.startKubeJob("neo4j-" + jobType, ingestTimestamp),
+        kube.startKubeJob("elastic-" + jobType, ingestTimestamp)
+    ]);
+};
 
 const getUploadPath = message =>
   JSON.parse(message.Body).Records[0].s3.object.key

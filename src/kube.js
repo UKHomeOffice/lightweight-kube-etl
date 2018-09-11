@@ -1,20 +1,20 @@
 "use strict"
 
-const crypto = require("crypto")
+const {ROLE} = process.env
+
 const childProcess = require("child_process")
 const Promise = require("bluebird")
 
 const TOKEN = process.env.KUBE_SERVICE_ACCOUNT_TOKEN;
 
 function startKubeJob(
-  role,
-  cronjob,
-  job_id = crypto.randomBytes(16).toString("hex")
+  cronjobName,
+  ingestTimestamp
 ) {
 
-  const kubectlDeleteCommand = `/app/kubectl --token ${TOKEN} delete job -l role=${role}`,
-    kubectlCreateCommand = `/app/kubectl --token ${TOKEN} create job ${cronjob}-${job_id} --from=cronjob/${cronjob}`,
-    kubectlLabelCommand = `/app/kubectl --token ${TOKEN} label job ${cronjob}-${job_id} role=${role}`
+  const kubectlDeleteCommand = `/app/kubectl --token ${TOKEN} delete job -l role=${ROLE}`;
+  const kubectlCreateCommand = `/app/kubectl --token ${TOKEN} create job ${cronjobName}-${ingestTimestamp} --from=cronjob/${cronjobName}`;
+  const kubectlLabelCommand = `/app/kubectl --token ${TOKEN} label job ${cronjobName}-${ingestTimestamp} role=${ROLE}`;
 
   return execPromise(kubectlDeleteCommand)
     .then(() => execPromise(kubectlCreateCommand))

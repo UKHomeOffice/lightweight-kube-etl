@@ -17,7 +17,7 @@ describe("kube", () => {
     it("should delete jobs with the same role", () => {
 
       return kube
-        .startKubeJob("mockRole", "MockJobName", "mockJobId")
+        .startKubeJob("MockJobName", "mockTimestamp")
         .then(() => {
           expect(childProcess.exec.mock.calls[0][0]).toEqual(
             "/app/kubectl --token MOCK_TOKEN delete job -l role=mockRole"
@@ -27,20 +27,20 @@ describe("kube", () => {
 
     it("should create a new job", () => {
       return kube
-        .startKubeJob("mockRole", "MockJobName", "mockJobId")
+        .startKubeJob("MockJobName", "mockTimestamp")
         .then(() => {
           expect(childProcess.exec.mock.calls[1][0]).toEqual(
-            "/app/kubectl --token MOCK_TOKEN create job MockJobName-mockJobId --from=cronjob/MockJobName"
+            "/app/kubectl --token MOCK_TOKEN create job MockJobName-mockTimestamp --from=cronjob/MockJobName"
           )
         })
     })
 
     it("should label the started job with a role", () => {
       return kube
-        .startKubeJob("mockRole", "MockJobName", "mockJobId")
+        .startKubeJob("MockJobName", "mockTimestamp")
         .then(() => {
           expect(childProcess.exec.mock.calls[2][0]).toEqual(
-            "/app/kubectl --token MOCK_TOKEN label job MockJobName-mockJobId role=mockRole"
+            "/app/kubectl --token MOCK_TOKEN label job MockJobName-mockTimestamp role=mockRole"
           )
         })
     })
