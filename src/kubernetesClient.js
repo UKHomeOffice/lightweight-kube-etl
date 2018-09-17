@@ -41,16 +41,24 @@ function createJob(jobName, cronjobName) {
 
 function deleteJob() {
 
+    const kubectlDeleteCommand = `/app/kubectl --token ${KUBE_SERVICE_ACCOUNT_TOKEN} delete job -l role=${ROLE}`;
 
+    return execPromise(kubectlDeleteCommand);
 }
 
-function labelJob() {
+function labelJob(jobName) {
 
+    const kubectlLabelCommand = `/app/kubectl --token ${KUBE_SERVICE_ACCOUNT_TOKEN} label job ${jobName} role=${ROLE}`;
 
+    return execPromise(kubectlLabelCommand);
 }
 
-function getJobStatus() {
+function getJobStatus(jobName) {
 
+    const kubectlPodStatusCommand = "/app/kubectl --token MOCK_TOKEN get po " + jobName +
+        " -o jsonpath --template={.status.containerStatuses[*].state.terminated.reason}";
+
+    return execPromise(kubectlPodStatusCommand);
 
 }
 
@@ -66,4 +74,10 @@ function execPromise(commandString) {
   })
 }
 
-module.exports = { runKubeJob, createJob };
+module.exports = {
+    runKubeJob,
+    createJob,
+    deleteJob,
+    labelJob,
+    getJobStatus
+};

@@ -61,7 +61,7 @@ describe("kube", () => {
     //
     // });
 
-      describe.only("when asked to create a job given name and cronjob", () => {
+      describe("when asked to create a job given name and cronjob", () => {
 
         it("should exec correct kubectl command", () => {
 
@@ -72,6 +72,48 @@ describe("kube", () => {
 
             });
         });
+
+      });
+
+      describe("when asked to delete a job", () => {
+
+          it("should exec correct kubectl command with correct label", () => {
+
+              return kube.deleteJob().then(() => {
+
+                  expect(childProcess.exec.mock.calls[0][0])
+                      .toEqual("/app/kubectl --token MOCK_TOKEN delete job -l role=mockRole");
+
+              });
+          });
+
+      });
+
+      describe("when asked to label a job", () => {
+
+          it("should exec correct kubectl command with correct label", () => {
+
+              return kube.labelJob("mockJob").then(() => {
+
+                  expect(childProcess.exec.mock.calls[0][0])
+                      .toEqual("/app/kubectl --token MOCK_TOKEN label job mockJob role=mockRole");
+
+              });
+          });
+
+      });
+
+      describe("when asked to get job status", () => {
+
+          it("should exec correct kubectl command", () => {
+
+              return kube.getJobStatus("mockJob").then(() => {
+
+                  expect(childProcess.exec.mock.calls[0][0])
+                      .toEqual("/app/kubectl --token MOCK_TOKEN get po mockJob -o jsonpath --template={.status.containerStatuses[*].state.terminated.reason}");
+
+              });
+          });
 
       });
 
