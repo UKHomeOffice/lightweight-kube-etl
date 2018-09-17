@@ -3,7 +3,7 @@
 const {BUCKET} = process.env
 
 const s3 = require("./s3")
-const kube = require("./kube")
+const kube = require("./kubernetesClient")
 const R = require("ramda")
 const mongodb = require("./mongodb")
 
@@ -18,25 +18,27 @@ const sqsMessageHandler = async (message, done) => {
 
   console.info(`jobType: ${jobType}`)
 
-  await startIngestionJobs(jobType, ingestPath).catch(console.error)
+  return runIngestionJobs(jobType, ingestPath).then(() => {
 
-  console.info(`insert into Mongo date: ${jobType}`)
+    console.info(`insert into Mongo date: ${jobType}`);
 
-  await mongodb.insert({
-    ingest: getIngestName(message),
-    loadDate: Date.now()
-  })
+    return  mongodb.insert({
+      ingest: getIngestName(message),
+      loadDate: Date.now()
+    });
 
-  return done()
-}
+  }).then(done).catch(console.error);
 
-const startIngestionJobs = (jobType, ingestPath) => {
+};
+
+// TODO: move to InjestionJobService
+const runIngestionJobs = (jobType, ingestPath) => {
 
     const ingestTimestamp = R.last(ingestPath.split("/"));
 
     return Promise.all([
-        kube.startKubeJob("neo4j-" + jobType, ingestTimestamp),
-        kube.startKubeJob("elastic-" + jobType, ingestTimestamp)
+        kube.runKubeJob("neo4j-" + jobType, ingestTimestamp),
+        kube.runKubeJob("elastic-" + jobType, ingestTimestamp)
     ]);
 };
 

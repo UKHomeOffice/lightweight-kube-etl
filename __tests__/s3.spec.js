@@ -1,5 +1,7 @@
 const s3 = require("../src/s3")
 
+global.console.log = jest.fn();
+
 describe("s3", () => {
   afterAll(() => s3.client.mockClear())
 

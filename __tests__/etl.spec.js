@@ -3,12 +3,17 @@
 const etl = require("../src/etl")
 const s3 = require("../src/s3")
 const mongodb = require("../src/mongodb")
-const kube = require("../src/kube")
-jest.mock("../src/kube")
+const kube = require("../src/kubernetesClient")
+jest.mock("../src/kubernetesClient")
 
 s3.checkManifest = jest.fn().mockImplementation(() => Promise.resolve(true))
 s3.getJobType = jest.fn().mockImplementation(() => Promise.resolve("delta"))
 mongodb.insert= jest.fn().mockImplementation(() => Promise.resolve())
+
+global.console = {
+    info: jest.fn(),
+    error: jest.fn()
+};
 
 const mockMessages = [
   {
@@ -97,11 +102,11 @@ describe("etl", () => {
   })
 
   describe("sqsMessageHandler", () => {
-    jest.spyOn(kube, "startKubeJob").mockReturnValue(true)
+    jest.spyOn(kube, "runKubeJob").mockReturnValue(true)
     const doneMock = jest.fn()
 
     beforeEach(() => {
-      kube.startKubeJob.mockReset()
+      kube.runKubeJob.mockReset()
       doneMock.mockReset()
     })
 
@@ -111,7 +116,7 @@ describe("etl", () => {
         .sqsMessageHandler(mockNonManifestMessage, doneMock)
         .then(() => {
           expect(doneMock).toHaveBeenCalledTimes(1)
-          expect(kube.startKubeJob).toHaveBeenCalledTimes(0)
+          expect(kube.runKubeJob).toHaveBeenCalledTimes(0)
         })
     })
 
@@ -119,11 +124,11 @@ describe("etl", () => {
       await etl.sqsMessageHandler(mockMessages[0], doneMock)
 
       expect(doneMock).toHaveBeenCalledTimes(1)
-      expect(kube.startKubeJob).toHaveBeenCalledTimes(2)
-      expect(kube.startKubeJob.mock.calls[0][0]).toBe('neo4j-delta')
-      expect(kube.startKubeJob.mock.calls[0][1]).toBe('222222222333')
-      expect(kube.startKubeJob.mock.calls[1][0]).toBe('elastic-delta')
-      expect(kube.startKubeJob.mock.calls[1][1]).toBe('222222222333')
+      expect(kube.runKubeJob).toHaveBeenCalledTimes(2)
+      expect(kube.runKubeJob.mock.calls[0][0]).toBe('neo4j-delta')
+      expect(kube.runKubeJob.mock.calls[0][1]).toBe('222222222333')
+      expect(kube.runKubeJob.mock.calls[1][0]).toBe('elastic-delta')
+      expect(kube.runKubeJob.mock.calls[1][1]).toBe('222222222333')
     })
 
     // TODO
