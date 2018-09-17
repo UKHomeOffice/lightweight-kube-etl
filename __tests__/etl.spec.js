@@ -4,11 +4,14 @@ const etl = require("../src/etl")
 const s3 = require("../src/s3")
 const mongodb = require("../src/mongodb")
 const kube = require("../src/kubernetesClient")
+const ingestionService = require("../src/ingestionService");
+
 jest.mock("../src/kubernetesClient")
 
 s3.checkManifest = jest.fn().mockImplementation(() => Promise.resolve(true))
 s3.getJobType = jest.fn().mockImplementation(() => Promise.resolve("delta"))
-mongodb.insert= jest.fn().mockImplementation(() => Promise.resolve())
+mongodb.insert = jest.fn().mockImplementation(() => Promise.resolve())
+ingestionService.runIngest = jest.fn().mockImplementation(() => Promise.resolve())
 
 global.console = {
     info: jest.fn(),
@@ -139,5 +142,21 @@ describe("etl", () => {
     //   expect(doneMock).toHaveBeenCalledTimes(1)
     //   expect(kube.startKubeJob).toHaveBeenCalledTimes(0)
     // })
+
+    it.only("should ask ingestion service to run correct job", () => {
+
+        const mockNonManifestMessage = mockMessages[0];
+
+        return etl.sqsMessageHandler(mockNonManifestMessage, doneMock).then(() => {
+
+            expect(ingestionService.runIngest).toHaveBeenCalledTimes(1);
+            expect(ingestionService.runIngest.mock.calls[0][0]).toEqual("delta");
+            expect(ingestionService.runIngest.mock.calls[0][1]).toEqual("222222222333");
+
+        });
+
+    });
   })
+
+
 })
