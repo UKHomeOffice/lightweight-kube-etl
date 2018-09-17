@@ -20,102 +20,64 @@ childProcess.exec = jest
 global.console.error = jest.fn();
 
 describe("kube", () => {
-  describe("runKubeJob", () => {
-    beforeEach(() => childProcess.exec.mockClear())
 
-    it("should delete jobs with the same role", () => {
+  beforeEach(() => childProcess.exec.mockClear())
 
-      return kube
-        .runKubeJob("MockJobName", "mockTimestamp")
-        .then(() => {
-          expect(childProcess.exec.mock.calls[0][0])
-            .toEqual("/app/kubectl --token MOCK_TOKEN delete job -l role=mockRole")
-        })
-    })
 
-    it("should create a new job", () => {
-      return kube
-        .runKubeJob("MockJobName", "mockTimestamp")
-        .then(() => {
-          expect(childProcess.exec.mock.calls[1][0])
-            .toEqual("/app/kubectl --token MOCK_TOKEN create job MockJobName-mockTimestamp --from=cronjob/MockJobName")
-        })
-    })
+  describe("when asked to create a job given name and cronjob", () => {
 
-    it("should label the started job with a role", () => {
-      return kube
-        .runKubeJob("MockJobName", "mockTimestamp")
-        .then(() => {
-          expect(childProcess.exec.mock.calls[2][0])
-            .toEqual("/app/kubectl --token MOCK_TOKEN label job MockJobName-mockTimestamp role=mockRole")
-        })
-    })
+    it("should exec correct kubectl command", () => {
 
-    // describe.only("after creating a job", () => {
-    //
-    //   it("should wait for job to complete", () => {
-    //
-    //     expect(kube.waitForJob).toEqual(false);
-    //
-    //   });
-    //
-    // });
+        return kube.createJob("mockJob", "mockCronjob").then(() => {
 
-      describe("when asked to create a job given name and cronjob", () => {
+            expect(childProcess.exec.mock.calls[0][0])
+                .toEqual("/app/kubectl --token MOCK_TOKEN create job mockJob --from=cronjob/mockCronjob");
 
-        it("should exec correct kubectl command", () => {
-
-            return kube.createJob("mockJob", "mockCronjob").then(() => {
-
-                expect(childProcess.exec.mock.calls[0][0])
-                    .toEqual("/app/kubectl --token MOCK_TOKEN create job mockJob --from=cronjob/mockCronjob");
-
-            });
         });
+    });
 
-      });
+  });
 
-      describe("when asked to delete a job", () => {
+  describe("when asked to delete a job", () => {
 
-          it("should exec correct kubectl command with correct label", () => {
+      it("should exec correct kubectl command with correct label", () => {
 
-              return kube.deleteJob().then(() => {
+          return kube.deleteJob().then(() => {
 
-                  expect(childProcess.exec.mock.calls[0][0])
-                      .toEqual("/app/kubectl --token MOCK_TOKEN delete job -l role=mockRole");
+              expect(childProcess.exec.mock.calls[0][0])
+                  .toEqual("/app/kubectl --token MOCK_TOKEN delete job -l role=mockRole");
 
-              });
           });
-
       });
 
-      describe("when asked to label a job", () => {
+  });
 
-          it("should exec correct kubectl command with correct label", () => {
+  describe("when asked to label a job", () => {
 
-              return kube.labelJob("mockJob").then(() => {
+      it("should exec correct kubectl command with correct label", () => {
 
-                  expect(childProcess.exec.mock.calls[0][0])
-                      .toEqual("/app/kubectl --token MOCK_TOKEN label job mockJob role=mockRole");
+          return kube.labelJob("mockJob").then(() => {
 
-              });
+              expect(childProcess.exec.mock.calls[0][0])
+                  .toEqual("/app/kubectl --token MOCK_TOKEN label job mockJob role=mockRole");
+
           });
-
       });
 
-      describe("when asked to get job status", () => {
+  });
 
-          it("should exec correct kubectl command", () => {
+  describe("when asked to get job status", () => {
 
-              return kube.getJobStatus("mockJob").then(() => {
+      it("should exec correct kubectl command", () => {
 
-                  expect(childProcess.exec.mock.calls[0][0])
-                      .toEqual("/app/kubectl --token MOCK_TOKEN get po mockJob -o jsonpath --template={.status.containerStatuses[*].state.terminated.reason}");
+          return kube.getJobStatus("mockJob").then(() => {
 
-              });
+              expect(childProcess.exec.mock.calls[0][0])
+                  .toEqual("/app/kubectl --token MOCK_TOKEN get po mockJob -o jsonpath --template={.status.containerStatuses[*].state.terminated.reason}");
+
           });
-
       });
 
-  })
+  });
+
 })

@@ -43,6 +43,3 @@ module.exports = { runIngest };
 //         .then(() => execPromise(kubectlLabelCommand))
 //
 // }
-
-
-// lovely to have demo... push messages to

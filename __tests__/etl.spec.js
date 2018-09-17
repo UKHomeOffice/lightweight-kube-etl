@@ -105,11 +105,11 @@ describe("etl", () => {
   })
 
   describe("sqsMessageHandler", () => {
-    jest.spyOn(kube, "runKubeJob").mockReturnValue(true)
+    // jest.spyOn(kube, "runKubeJob").mockReturnValue(true)
     const doneMock = jest.fn()
 
     beforeEach(() => {
-      kube.runKubeJob.mockReset()
+      ingestionService.runIngest.mockClear()
       doneMock.mockReset()
     })
 
@@ -119,19 +119,8 @@ describe("etl", () => {
         .sqsMessageHandler(mockNonManifestMessage, doneMock)
         .then(() => {
           expect(doneMock).toHaveBeenCalledTimes(1)
-          expect(kube.runKubeJob).toHaveBeenCalledTimes(0)
+          expect(ingestionService.runIngest).toHaveBeenCalledTimes(0)
         })
-    })
-
-    it("should start the kube job if the manifest is good", async () => {
-      await etl.sqsMessageHandler(mockMessages[0], doneMock)
-
-      expect(doneMock).toHaveBeenCalledTimes(1)
-      expect(kube.runKubeJob).toHaveBeenCalledTimes(2)
-      expect(kube.runKubeJob.mock.calls[0][0]).toBe('neo4j-delta')
-      expect(kube.runKubeJob.mock.calls[0][1]).toBe('222222222333')
-      expect(kube.runKubeJob.mock.calls[1][0]).toBe('elastic-delta')
-      expect(kube.runKubeJob.mock.calls[1][1]).toBe('222222222333')
     })
 
     // TODO
@@ -143,7 +132,7 @@ describe("etl", () => {
     //   expect(kube.startKubeJob).toHaveBeenCalledTimes(0)
     // })
 
-    it.only("should ask ingestion service to run correct job", () => {
+    it("should ask ingestion service to run correct job", () => {
 
         const mockNonManifestMessage = mockMessages[0];
 
