@@ -20,7 +20,7 @@ function createJob(jobName, cronjobName) {
     return execPromise(kubectlCreateCommand);
 }
 
-function deleteJob() {
+function deleteJobs() {
 
     const kubectlDeleteCommand = `/app/kubectl --token ${KUBE_SERVICE_ACCOUNT_TOKEN} delete job -l role=${ROLE}`;
 
@@ -44,20 +44,26 @@ function getJobStatus(jobName) {
 }
 
 function execPromise(commandString) {
-  return new Promise((resolve, reject) => {
-    childProcess.exec(commandString, (error, stdout, stderr) => {
-      if (error) {
-        return reject(new Error(error))
-      }
 
-      return resolve({stdout, stderr})
-    })
-  })
+    return new Promise((resolve, reject) => {
+
+        childProcess.exec(commandString, (error, stdout, stderr) => {
+
+            if (error || stderr) {
+
+                return reject(new Error(error || stderr));
+            }
+
+            return resolve({stdout, stderr});
+        });
+
+  });
+
 }
 
 module.exports = {
     createJob,
-    deleteJob,
+    deleteJobs,
     labelJob,
     getJobStatus
 };

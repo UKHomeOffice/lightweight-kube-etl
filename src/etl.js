@@ -14,15 +14,15 @@ const sqsMessageHandler = async (message, done) => {
   if (!isManifest(message)) return done()
 
   const ingestPath = getIngestPath(message)
-  const jobType = await s3.getJobType(BUCKET, ingestPath)
+  const ingestType = await s3.getIngestType(BUCKET, ingestPath)
 
-  if (jobType === undefined) return done()
+  if (ingestType === undefined) return done()
 
-  console.info(`jobType: ${jobType}`)
+  console.info(`ingestType: ${ingestType}`)
 
   const ingestName = getIngestName(message)
 
-  return ingestionService.runIngest(jobType, ingestName).then(() => {
+  return ingestionService.runIngest(ingestType, ingestName).then(() => {
 
     console.info(`insert into Mongo date: ${jobType}`);
 

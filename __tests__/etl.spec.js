@@ -9,7 +9,7 @@ const ingestionService = require("../src/ingestionService");
 jest.mock("../src/kubernetesClient")
 
 s3.checkManifest = jest.fn().mockImplementation(() => Promise.resolve(true))
-s3.getJobType = jest.fn().mockImplementation(() => Promise.resolve("delta"))
+s3.getIngestType = jest.fn().mockImplementation(() => Promise.resolve("delta"))
 mongodb.insert = jest.fn().mockImplementation(() => Promise.resolve())
 ingestionService.runIngest = jest.fn().mockImplementation(() => Promise.resolve())
 
@@ -146,6 +146,5 @@ describe("etl", () => {
 
     });
   })
-
 
 })

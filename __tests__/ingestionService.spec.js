@@ -1,64 +1,98 @@
 "use strict";
 
+const Promise = require("bluebird");
+const R = require("ramda");
+const ingestionService = require("../src/ingestionService");
+const kubernetesClient = require("../src/kubernetesClient");
+
+
+kubernetesClient.deleteJobs = jest.fn().mockImplementation(() => Promise.resolve());
+kubernetesClient.createJob = jest.fn().mockImplementation(() => Promise.resolve());
+kubernetesClient.labelJob = jest.fn().mockImplementation(() => Promise.resolve());
+kubernetesClient.getJobStatus = jest.fn().mockResolvedValue({ completed: true });
+
+
 describe("ingestionService", () => {
 
-    describe("runService", () => {
+    beforeEach(() => {
 
-        it("", () => {
+        kubernetesClient.deleteJobs.mockClear();
+        kubernetesClient.createJob.mockClear();
+        kubernetesClient.labelJob.mockClear();
 
-           expect(true).toEqual(true);
+    });
+
+    describe("when asked to run jobType ingest", () => {
+
+        it("should delete jobs", () => {
+
+            return ingestionService.runIngest().then(() => {
+
+                expect(kubernetesClient.deleteJobs).toHaveBeenCalledTimes(1);
+
+            });
+
         });
+
+        it("should create correct jobs", () => {
+
+            return ingestionService.runIngest("mockJobType", "1537191996244").then(() => {
+
+                expect(kubernetesClient.createJob).toHaveBeenCalledTimes(2);
+                expect(kubernetesClient.createJob.mock.calls[0][0]).toEqual("neo4j-mockJobType-1537191996244");
+                expect(kubernetesClient.createJob.mock.calls[0][1]).toEqual("neo4j-mockJobType");
+                expect(kubernetesClient.createJob.mock.calls[1][0]).toEqual("elastic-mockJobType-1537191996244");
+                expect(kubernetesClient.createJob.mock.calls[1][1]).toEqual("elastic-mockJobType");
+
+            });
+
+        });
+
+        it("should label jobs", () => {
+
+            return ingestionService.runIngest("mockJobType", "1537191996244").then(() => {
+
+                expect(kubernetesClient.labelJob).toHaveBeenCalledTimes(2);
+                expect(kubernetesClient.labelJob.mock.calls[0][0]).toEqual("neo4j-mockJobType-1537191996244");
+                expect(kubernetesClient.labelJob.mock.calls[1][0]).toEqual("elastic-mockJobType-1537191996244");
+
+            });
+
+        });
+
+        it("should wait for jobs to complete", () => {
+
+            kubernetesClient.getJobStatus = jest.fn().mockImplementation((jobName) => {
+
+                if (R.startsWith("neo4j", jobName)) {
+
+                    return neo4jJobStatusMock();
+                }
+
+                return elasticJobStatusMock();
+            });
+
+            const neo4jJobStatusMock = jest.fn().mockResolvedValue({ completed: true })
+                .mockResolvedValueOnce({ completed: false })
+                .mockResolvedValueOnce({ completed: false })
+                .mockResolvedValueOnce({ completed: false });
+
+            const elasticJobStatusMock = jest.fn().mockResolvedValue({ completed: true })
+                .mockResolvedValueOnce({ completed: false })
+                .mockResolvedValueOnce({ completed: false });
+
+            return ingestionService.runIngest("mockJobType", "1537191996244").then(() => {
+
+                expect(kubernetesClient.getJobStatus).toHaveBeenCalledTimes(7);
+                expect(neo4jJobStatusMock).toHaveBeenCalledTimes(4);
+                expect(elasticJobStatusMock).toHaveBeenCalledTimes(3);
+                expect(kubernetesClient.getJobStatus).toHaveBeenCalledWith("neo4j-mockJobType-1537191996244");
+                expect(kubernetesClient.getJobStatus).toHaveBeenCalledWith("elastic-mockJobType-1537191996244");
+
+            });
+
+        });
+
     });
 
 });
-
-
-// it("should delete jobs with the same role", () => {
-//
-//   return kube
-//     .runKubeJob("MockJobName", "mockTimestamp")
-//     .then(() => {
-//       expect(childProcess.exec.mock.calls[0][0])
-//         .toEqual("/app/kubectl --token MOCK_TOKEN delete job -l role=mockRole")
-//     })
-// })
-//
-// it("should create a new job", () => {
-//   return kube
-//     .runKubeJob("MockJobName", "mockTimestamp")
-//     .then(() => {
-//       expect(childProcess.exec.mock.calls[1][0])
-//         .toEqual("/app/kubectl --token MOCK_TOKEN create job MockJobName-mockTimestamp --from=cronjob/MockJobName")
-//     })
-// })
-//
-// it("should label the started job with a role", () => {
-//   return kube
-//     .runKubeJob("MockJobName", "mockTimestamp")
-//     .then(() => {
-//       expect(childProcess.exec.mock.calls[2][0])
-//         .toEqual("/app/kubectl --token MOCK_TOKEN label job MockJobName-mockTimestamp role=mockRole")
-//     })
-// })
-
-// describe.only("after creating a job", () => {
-//
-//   it("should wait for job to complete", () => {
-//
-//     expect(kube.waitForJob).toEqual(false);
-//
-//   });
-//
-// });
-
-
-// it("should start the kube job if the manifest is good", async () => {
-//   await etl.sqsMessageHandler(mockMessages[0], doneMock)
-//
-//   expect(doneMock).toHaveBeenCalledTimes(1)
-//   expect(ingestionService.runIngest).toHaveBeenCalledTimes(1)
-//   expect(ingestionService.runIngest.mock.calls[0][0]).toBe('delta')
-//   expect(ingestionService.runIngest.mock.calls[0][1]).toBe('222222222333')
-//   // expect(ingestionService.runIngest.mock.calls[1][0]).toBe('elastic-delta')
-//   // expect(ingestionService.runIngest.mock.calls[1][1]).toBe('222222222333')
-// })

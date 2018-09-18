@@ -76,7 +76,7 @@ describe("s3", () => {
               ETag: "ba6119931c7010138eec96d9fb75701865908286"
             })
         }))
-      res = await s3.getJobType("foo", "pending/123") //?
+      res = await s3.getIngestType("foo", "pending/123") //?
       expect(res).toEqual("bulk")
     })
 
@@ -84,7 +84,7 @@ describe("s3", () => {
       s3.client.headObject = jest.fn().mockImplementation(() => ({
         promise: () => Promise.reject(new Error("Some error"))
       }))
-      res = await s3.getJobType("foo", "pending/123") //?
+      res = await s3.getIngestType("foo", "pending/123") //?
       expect(res).toEqual(undefined)
     })
   })

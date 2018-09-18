@@ -1,45 +1,49 @@
 "use strict";
 
+const Promise = require("bluebird");
+const R = require("ramda");
+const kubernetesClient = require("./kubernetesClient");
 
-function runIngest(type, ingestName) {
+// TODO: jobTypes should configurable
+const jobTypes = ["neo4j", "elastic"];
 
+function runIngest(ingestType, ingestName) {
+
+    return kubernetesClient.deleteJobs()
+        .then(() => runJobs(ingestType, ingestName));
 
 }
 
+function runJobs(ingestType, ingestName) {
+
+    return Promise.all(R.map((jobType) => {
+
+        const cronjobName = jobType + "-" + ingestType,
+            jobName = cronjobName + "-" + ingestName;
+
+        return kubernetesClient.createJob(jobName, cronjobName)
+            .then(() => kubernetesClient.labelJob(jobName))
+            .then(() => waitForJob(jobName, 100));
+
+    }, jobTypes));
+
+}
+
+// TODO: pollInterval should configurable
+function waitForJob(jobName, pollInterval) {
+
+    return kubernetesClient.getJobStatus(jobName)
+        .then((status) => {
+
+            if (status.completed) {
+
+                return status;
+            }
+
+            return Promise.delay(pollInterval)
+                .then(() => waitForJob(jobName, pollInterval));
+
+        });
+}
+
 module.exports = { runIngest };
-
-// runIngestion(type, ingestdir/ts)
-
-// waitForJob -> see sandbox
-
-// runIngestionForDb ??? neo / elastic
-
-
-// const runIngestionJobs = (jobType, ingestPath) => {
-//
-//     const ingestTimestamp = R.last(ingestPath.split("/"));
-//
-//     return Promise.all([
-//         kube.runKubeJob("neo4j-" + jobType, ingestTimestamp),
-//         kube.runKubeJob("elastic-" + jobType, ingestTimestamp)
-//     ]);
-// };
-
-// function runKubeJob(cronjobName, ingestTimestamp) {
-//
-//     const jobName = `${cronjobName}-${ingestTimestamp}`;
-//     const kubectlDeleteCommand = `/app/kubectl --token ${TOKEN} delete job -l role=${ROLE}`;
-//     const kubectlCreateCommand = `/app/kubectl --token ${TOKEN} create job ${jobName} --from=cronjob/${cronjobName}`;
-//     const kubectlLabelCommand = `/app/kubectl --token ${TOKEN} label job ${jobName} role=${ROLE}`;
-//
-//     return execPromise(kubectlDeleteCommand)
-//         .then(() => execPromise(kubectlCreateCommand))
-//         .then(({stdout, stderr}) => {
-//             if (stderr) {
-//                 console.error(stderr)
-//                 throw stderr
-//             }
-//         })
-//         .then(() => execPromise(kubectlLabelCommand))
-//
-// }

@@ -56,7 +56,7 @@ const jobFiles = [
   {type: "bulk", path: "/bulk.txt"}
 ]
 
-const getJobType = async (bucket, keyPath) => {
+const getIngestType = async (bucket, keyPath) => {
   const res = await Promise.all(
     R.map(async a => {
       const isFound = await isFileFound(bucket, keyPath, a.path) //?
@@ -79,5 +79,5 @@ module.exports = {
   getManifest,
   getObjectHash,
   checkManifest,
-  getJobType
+  getIngestType
 }
