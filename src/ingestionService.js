@@ -5,7 +5,7 @@ const R = require("ramda");
 const kubernetesClient = require("./kubernetesClient");
 
 // TODO: jobTypes should configurable
-const jobTypes = ["neo4j"];//, "elastic"];
+const jobTypes = ["neo4j", "elastic"];
 
 function runIngest(ingestType, ingestName) {
 
