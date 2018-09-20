@@ -2,6 +2,7 @@
 
 const childProcess = require("child_process")
 const Promise = require("bluebird")
+const R = require("ramda")
 
 const {ROLE, KUBE_SERVICE_ACCOUNT_TOKEN} = process.env;
 
@@ -36,12 +37,13 @@ function labelJob(jobName) {
 
 function getJobStatus(jobName) {
 
-    const kubectlPodStatusCommand = "/app/kubectl --token MOCK_TOKEN get po " + jobName +
-        " -o jsonpath --template={.status.containerStatuses[*].state.terminated.reason}";
+    const kubectlPodStatusCommand = `/app/kubectl --token ${KUBE_SERVICE_ACCOUNT_TOKEN} get job ${jobName} -o json`;
 
-    return execPromise(kubectlPodStatusCommand);
+    return execPromise(kubectlPodStatusCommand).then(JSON.parse)
+        .then(({ status }) => ({ completed: R.has("succeeded", status) }));
 
 }
+
 
 function execPromise(commandString) {
 
@@ -54,7 +56,7 @@ function execPromise(commandString) {
                 return reject(new Error(error || stderr));
             }
 
-            return resolve({stdout, stderr});
+            return resolve(stdout);
         });
 
   });

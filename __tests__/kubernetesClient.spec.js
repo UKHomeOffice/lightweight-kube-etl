@@ -165,13 +165,51 @@ describe("kube", () => {
 
       it("should exec correct kubectl command", () => {
 
+          childProcess.exec = jest.fn().mockImplementation((command, callback) => callback(null, '{"status": {}}', null));
+
           return kube.getJobStatus("mockJob").then(() => {
 
               expect(childProcess.exec).toHaveBeenCalledTimes(1);
               expect(childProcess.exec.mock.calls[0][0])
-                  .toEqual("/app/kubectl --token MOCK_TOKEN get po mockJob -o jsonpath --template={.status.containerStatuses[*].state.terminated.reason}");
+                  .toEqual("/app/kubectl --token MOCK_TOKEN get job mockJob -o json");
 
           });
+      });
+
+      it("should return correct status when job is active", () => {
+
+          const mockActiveStatus = '{"status": {"active": 1}}';
+
+          childProcess.exec = jest.fn().mockImplementation((command, callback) => {
+
+              return callback(null, mockActiveStatus, null);
+
+          });
+
+          return kube.getJobStatus("mockJob").then((status) => {
+
+              expect(status).toEqual({ completed: false });
+
+          });
+
+      });
+
+      it("should return correct status when job has succeeded", () => {
+
+          const mockSucceededStatus = '{"status": {"succeeded": 1}}';
+
+          childProcess.exec = jest.fn().mockImplementation((command, callback) => {
+
+              return callback(null, mockSucceededStatus, null);
+
+          });
+
+          return kube.getJobStatus("mockJob").then((status) => {
+
+              expect(status).toEqual({ completed: true });
+
+          });
+
       });
 
       it("should throw an exception if command execution fails", (done) => {
