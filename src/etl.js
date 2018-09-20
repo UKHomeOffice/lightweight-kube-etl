@@ -9,7 +9,7 @@ const ingestionService = require("./ingestionService")
 const {BUCKET} = process.env
 
 
-const sqsMessageHandler = async (message, done) => {
+const messageHandler = async (message, done) => {
 
   if (!isManifest(message)) return done()
 
@@ -24,14 +24,15 @@ const sqsMessageHandler = async (message, done) => {
 
   return ingestionService.runIngest(ingestType, ingestName).then(() => {
 
-    console.info(`insert into Mongo date: ${jobType}`);
+    console.info(`insert into Mongo date: ${ingestType}`);
 
     return  mongodb.insert({
       ingest: ingestName,
       loadDate: Date.now()
     });
 
-  }).then(done)
+  })
+  .then(() => done())
   .catch(console.error);
 
 };
@@ -48,4 +49,4 @@ const isManifest = message => getUploadPath(message).indexOf("manifest") > -1
 const getIngestName = message => getUploadPath(message).split("/")[1]
 
 
-module.exports = {sqsMessageHandler, isManifest, getIngestPath}
+module.exports = {messageHandler, isManifest, getIngestPath}

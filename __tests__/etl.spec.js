@@ -10,7 +10,7 @@ jest.mock("../src/kubernetesClient")
 
 s3.checkManifest = jest.fn().mockImplementation(() => Promise.resolve(true))
 s3.getIngestType = jest.fn().mockImplementation(() => Promise.resolve("delta"))
-mongodb.insert = jest.fn().mockImplementation(() => Promise.resolve())
+mongodb.insert = jest.fn().mockImplementation(() => Promise.resolve({ result: "mongoCommandResponse" }))
 ingestionService.runIngest = jest.fn().mockImplementation(() => Promise.resolve())
 
 global.console = {
@@ -104,7 +104,7 @@ describe("etl", () => {
     })
   })
 
-  describe("sqsMessageHandler", () => {
+  describe("messageHandler", () => {
     // jest.spyOn(kube, "runKubeJob").mockReturnValue(true)
     const doneMock = jest.fn()
 
@@ -116,7 +116,7 @@ describe("etl", () => {
     it("should call done function if the message does not contain a manifest key", function() {
       const mockNonManifestMessage = mockMessages[1]
       return etl
-        .sqsMessageHandler(mockNonManifestMessage, doneMock)
+        .messageHandler(mockNonManifestMessage, doneMock)
         .then(() => {
           expect(doneMock).toHaveBeenCalledTimes(1)
           expect(ingestionService.runIngest).toHaveBeenCalledTimes(0)
@@ -126,7 +126,7 @@ describe("etl", () => {
     // TODO
     // it("should not start the kube job if the manifest is incorrect", async () => {
     //   s3.checkManifest = jest.fn(bucket => Promise.resolve(false))
-    //   await etl.sqsMessageHandler(mockMessages[0], doneMock)
+    //   await etl.messageHandler(mockMessages[0], doneMock)
     //
     //   expect(doneMock).toHaveBeenCalledTimes(1)
     //   expect(kube.startKubeJob).toHaveBeenCalledTimes(0)
@@ -136,7 +136,7 @@ describe("etl", () => {
 
         const mockNonManifestMessage = mockMessages[0];
 
-        return etl.sqsMessageHandler(mockNonManifestMessage, doneMock).then(() => {
+        return etl.messageHandler(mockNonManifestMessage, doneMock).then(() => {
 
             expect(ingestionService.runIngest).toHaveBeenCalledTimes(1);
             expect(ingestionService.runIngest.mock.calls[0][0]).toEqual("delta");
@@ -145,6 +145,20 @@ describe("etl", () => {
         });
 
     });
+
+    it("should call done with no arguments when ingest succeeds", () => {
+
+        const mockNonManifestMessage = mockMessages[0];
+
+        return etl.messageHandler(mockNonManifestMessage, doneMock).then(() => {
+
+            expect(doneMock).toHaveBeenCalledTimes(1);
+            expect(doneMock.mock.calls[0][0]).toEqual(undefined);
+
+        });
+
+    });
+
   })
 
 })

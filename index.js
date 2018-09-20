@@ -1,10 +1,10 @@
 "use strict"
 
 const {createConsumer} = require("./src/sqs")
-const {sqsMessageHandler} = require("./src/etl")
+const {messageHandler} = require("./src/etl")
 
-const app = createConsumer(sqsMessageHandler)
+const messageConsumer = createConsumer(messageHandler)
 
-app.on("error", err => console.error(err.message))
+messageConsumer.on("error", err => console.error(err.message))
 
-if (!global.it) app.start()
+if (!global.it) messageConsumer.start()
