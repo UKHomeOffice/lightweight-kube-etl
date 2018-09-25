@@ -26,6 +26,7 @@ const messageHandler = async (message, done) => {
 
     console.info(`insert into Mongo date: ${ingestType}`);
 
+    // TODO: add job details e.g. type, start time, end time, duration?
     return  mongodb.insert({
       ingest: ingestName,
       loadDate: Date.now()

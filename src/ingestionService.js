@@ -14,6 +14,7 @@ function runIngest(ingestType, ingestName) {
 
 }
 
+// TODO: add logging of job start/finish
 function runJobs(ingestType, ingestName) {
 
     return Promise.all(R.map((jobType) => {

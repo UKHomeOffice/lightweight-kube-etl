@@ -1,8 +1,13 @@
+"use strict";
+
 const s3 = require("../src/s3")
 
 global.console.log = jest.fn();
 
 describe("s3", () => {
+
+  let res;
+
   afterAll(() => s3.client.mockClear())
 
   describe("getObjectHash", () => {
@@ -88,4 +93,53 @@ describe("s3", () => {
       expect(res).toEqual(undefined)
     })
   })
+
+    describe("when asked to list contents given a path", () => {
+
+        const mockS3Response = [
+            { Key: "pending/1537362018/bulk.txt" },
+            { Key: "pending/1537362018/organisation/organisation_headers.csv.gz" },
+            { Key: "pending/1537362006/relationships_wpd.csv.gz" },
+            { Key: "pending/1537362006/relationships_crs1.csv.gz" },
+            { Key: "pending/1537362006/incremental.txt" },
+            { Key: "pending/1537362001/incremental.txt" },
+            { Key: "pending/1537362002/incremental.txt" }
+        ];
+
+        s3.client.listObjects = jest.fn().mockImplementation(() => ({
+            promise: () => Promise.resolve(mockS3Response)
+        }));
+
+        beforeEach(() => {
+
+            s3.client.listObjects.mockClear();
+        });
+
+        it("should ask s3 client to list objects with Prefix", () => {
+
+            return s3.getJobParameters("mockBucket", "pending/").then((jobParameters) => {
+
+                expect(s3.client.listObjects.mock.calls[0][0]).toEqual({ Bucket: "mockBucket", Key: "pending/" });
+                expect(jobParameters).toEqual({
+                    ingestName: "1537362001",
+                    ingestType: "incremental"
+                });
+
+            });
+
+        });
+
+        it("should return list of files and sub-directories of path", () => {
+
+            const contents = s3.getIngestNameAndType(mockS3Response)
+
+            expect(contents).toEqual({
+                ingestName: "1537362001",
+                ingestType: "incremental"
+            });
+
+        });
+
+    });
+
 })

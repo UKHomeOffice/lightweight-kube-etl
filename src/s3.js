@@ -74,10 +74,34 @@ const getIngestType = async (bucket, keyPath) => {
   )(res) //?
 }
 
+const getJobParameters = (bucket, path) => {
+
+  return client.listObjects({"Bucket": bucket, "Key": path}).promise()
+      .then((objects) => {
+
+        return getIngestNameAndType(objects);
+
+      });
+
+};
+
+const getIngestNameAndType = R.compose(
+    R.evolve({ingestType: R.replace(".txt", "")}),
+    R.zipObj(["ingestName", "ingestType"]),
+    R.tail,
+    R.head,
+    R.sort((older, newer) => (older[1] > newer[1])),
+    R.filter(R.compose(R.contains(R.__, ["bulk.txt", "incremental.txt"]), R.last)),
+    R.map(R.take(3)),
+    R.map(R.compose(R.split("/"), R.prop("Key")))
+);
+
 module.exports = {
   client,
   getManifest,
   getObjectHash,
   checkManifest,
-  getIngestType
+  getIngestType,
+  getJobParameters,
+  getIngestNameAndType
 }

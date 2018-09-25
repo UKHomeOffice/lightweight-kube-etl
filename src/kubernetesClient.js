@@ -35,6 +35,7 @@ function labelJob(jobName) {
     return execPromise(kubectlLabelCommand);
 }
 
+// TODO: need to check kubectl response for job failure & reject Error
 function getJobStatus(jobName) {
 
     const kubectlPodStatusCommand = `/app/kubectl --token ${KUBE_SERVICE_ACCOUNT_TOKEN} get job ${jobName} -o json`;
