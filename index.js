@@ -52,6 +52,7 @@ function poll (nextIngestJobParams, ready) {
 
 function ready (nextIngestJobParams) {
   kubeClient.on('msg', msg => console.log(msg));
+  kubeClient.on('error', err => console.error(err));
   kubeClient.startNextIngestJob(nextIngestJobParams);
 }
 
