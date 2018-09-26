@@ -16,4 +16,4 @@ COPY --from=builder /app/node_modules /app/node_modules
 COPY --from=builder /app/kubectl /app/kubectl
 WORKDIR /app
 USER 1000
-CMD npm start
+CMD /app/kubectl proxy 8181:8181 && npm start
