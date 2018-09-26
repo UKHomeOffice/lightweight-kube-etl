@@ -29,6 +29,7 @@ class KubeAPIClient extends EventEmitter {
       },
       json: true
     }
+    this.jobs = {}
   }
   
   startNextIngestJob ({ingestName, ingestType}) {
@@ -94,13 +95,19 @@ class KubeAPIClient extends EventEmitter {
 
   createJob (ingestName) {
     const createCmd = `/app/kubectl --token ${this.token} create job ${ingestName} --from=cronjob/neo4j-bulk`;
+    
+    const self = this;
 
     execPromise(createCmd)
       .then(() => {
-        this.emit('msg', `Created jobs - ${JSON.stringify(ingestName, null, 4)}`);
+        self.emit('msg', `Created job - ${JSON.stringify(ingestName, null, 4)}`);
+
+        self.jobs[ingestName] = 'running'
+
+        self.emit('msg', `Status - ${JSON.stringify(self.jobs, null, 4)}`);
       })
       .catch(err => {
-        console.error(err);
+        self.emit('err', JSON.stringify(err, null, 4));
       });
   }
 
