@@ -32,7 +32,7 @@ describe("kube", () => {
         return kube.createJob("mockJob", "mockCronjob").then(() => {
 
             expect(childProcess.exec.mock.calls[0][0])
-                .toEqual("/app/kubectl --token MOCK_TOKEN create job mockJob --from=cronjob/mockCronjob");
+                .toEqual("kubectl --token MOCK_TOKEN create job mockJob --from=cronjob/mockCronjob");
 
         });
 
@@ -78,7 +78,7 @@ describe("kube", () => {
           return kube.deleteJobs().then(() => {
 
               expect(childProcess.exec.mock.calls[0][0])
-                  .toEqual("/app/kubectl --token MOCK_TOKEN delete job -l role=mockRole");
+                  .toEqual("kubectl --token MOCK_TOKEN delete job -l role=mockRole");
 
           });
 
@@ -123,7 +123,7 @@ describe("kube", () => {
           return kube.labelJob("mockJob").then(() => {
 
               expect(childProcess.exec.mock.calls[0][0])
-                  .toEqual("/app/kubectl --token MOCK_TOKEN label job mockJob role=mockRole");
+                  .toEqual("kubectl --token MOCK_TOKEN label job mockJob role=mockRole");
 
           });
 
@@ -171,7 +171,7 @@ describe("kube", () => {
 
               expect(childProcess.exec).toHaveBeenCalledTimes(1);
               expect(childProcess.exec.mock.calls[0][0])
-                  .toEqual("/app/kubectl --token MOCK_TOKEN get job mockJob -o json");
+                  .toEqual("kubectl --token MOCK_TOKEN get job mockJob -o json");
 
           });
       });

@@ -33,10 +33,11 @@ class KubeAPIClient extends EventEmitter {
         return Promise.all(jobsToDelete.map(this.deleteJob.bind(this)));
       })
       .then(() => {
-        return runJobs(ingestType,ingestName )
+        return runJobs(ingestType, ingestName);
       })
       .then(() => {
-        self.emit('finished', `${new Date()} - Completed ${ingestType} ${ingestName}`)
+        self.emit('msg', `${new Date()} - Completed ${ingestType} ${ingestName}`);
+        self.emit('completed', {ingestType, ingestName});
       })
   }
 

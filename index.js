@@ -14,8 +14,9 @@ const {
 
 const kubeClient = new KubeAPIClient(KUBE_SERVICE_ACCOUNT_TOKEN);
 
-function go () {
+let currentIngestFoldersAndFiles;
 
+function go () {
   client.listObjectsV2({Bucket: BUCKET, Prefix: "pending/", Delimiter: ""}, (err, result) => {
     if (!result) {
       console.error('no results from s3 contents request');
@@ -26,12 +27,13 @@ function go () {
       console.error('s3 bucket is empty');
       return setTimeout(go, timeout);
     }
+
+    currentIngestFoldersAndFiles = result.Contents;
     
-    const nextIngestJobParams = _getIngestNameAndType(result.Contents);
+    const nextIngestJobParams = _getIngestNameAndType(currentIngestFoldersAndFiles);
     
     poll(nextIngestJobParams, ready);
   });
-  
 }
 
 function poll (nextIngestJobParams, ready) {
@@ -53,7 +55,25 @@ function poll (nextIngestJobParams, ready) {
 function ready (nextIngestJobParams) {
   kubeClient.on('msg', msg => console.log(msg));
   kubeClient.on('error', err => console.error(err));
+  kubeClient.on('completed', onCompleted);
+  
   kubeClient.startNextIngestJob(nextIngestJobParams);
+}
+
+function onCompleted ({injestName, ingestType}) {
+  const deleteParams = {
+    Bucket: BUCKET,
+    Delete: {
+      Objects: R.map(R.pick('Key'), currentIngestFoldersAndFiles),
+      Quiet: true
+    }
+  }
+  client.deleteObjects(deleteParams, (err) => {
+    if (err) return console.error(err);
+
+    console.log(`Deleted ${ingestType} ${ingestName}/**/* from ${BUCKET}`);
+    setTimeout(go, timeout);
+  });
 }
 
 const _getIngestNameAndType = R.compose(
