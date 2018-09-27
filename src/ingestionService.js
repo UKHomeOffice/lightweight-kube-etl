@@ -17,6 +17,8 @@ function runIngest(ingestType, ingestName) {
 // TODO: add logging of job start/finish
 function runJobs(ingestType, ingestName) {
 
+    const pollInterval = process.env.NODE_ENV === 'test' ? 100 : 5000;
+
     return Promise.all(R.map((jobType) => {
 
         const cronjobName = jobType + "-" + ingestType,
@@ -24,7 +26,7 @@ function runJobs(ingestType, ingestName) {
 
         return kubernetesClient.createJob(jobName, cronjobName)
             .then(() => kubernetesClient.labelJob(jobName))
-            .then(() => waitForJob(jobName, 100));
+            .then(() => waitForJob(jobName, pollInterval))
 
     }, jobTypes));
 

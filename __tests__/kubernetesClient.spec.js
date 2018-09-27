@@ -71,48 +71,63 @@ describe("kube", () => {
 
   });
 
-  describe.skip("when asked to delete a job", () => {
+  describe.only("when asked to delete a job", () => {
+    const sample = require('./sample_job_list.json');
 
-      it("should exec correct kubectl command with correct label", () => {
+    it('should delete jobs of a type', () => {
+      const ingestType = new RegExp(/-delta-/);
 
-          return kube.deleteJobs().then(() => {
+      const expected = [
+        'elastic-delta-1537362018',
+        'elastic-delta-1537362030'
+      ]
 
-              expect(childProcess.exec.mock.calls[0][0])
-                  .toEqual("kubectl --token MOCK_TOKEN delete job -l role=mockRole");
+      const actual = kube.getJobLabels(ingestType)(sample);
 
-          });
+      expect(actual).toEqual(expected);
 
-      });
+    });
 
-      it("should throw an exception if command execution fails", (done) => {
+      // it("should exec correct kubectl command with correct label", () => {
 
-          childProcess.exec = jest.fn()
-              .mockImplementation((command, callback) => callback("mock child_process.exec error", null, null));
+      //     return kube.deleteJobs().then(() => {
 
-          return kube.deleteJobs().catch((error) => {
+      //         expect(childProcess.exec.mock.calls[0][0])
+      //             .toEqual("kubectl --token MOCK_TOKEN delete job -l role=mockRole");
 
-              expect(error).toBeInstanceOf(Error);
-              expect(error.message).toEqual("mock child_process.exec error");
-              done();
+      //     });
 
-          });
+      // });
 
-      });
+      // it("should throw an exception if command execution fails", (done) => {
 
-      it("should throw an exception if command execution returns stderr", (done) => {
+      //     childProcess.exec = jest.fn()
+      //         .mockImplementation((command, callback) => callback("mock child_process.exec error", null, null));
 
-          childProcess.exec = jest.fn()
-              .mockImplementation((command, callback) => callback(null, null, "stderr"));
+      //     return kube.deleteJobs().catch((error) => {
 
-          return kube.deleteJobs().catch((error) => {
+      //         expect(error).toBeInstanceOf(Error);
+      //         expect(error.message).toEqual("mock child_process.exec error");
+      //         done();
 
-              expect(error).toBeInstanceOf(Error);
-              expect(error.message).toEqual("stderr");
-              done();
+      //     });
 
-          });
+      // });
 
-      });
+      // it("should throw an exception if command execution returns stderr", (done) => {
+
+      //     childProcess.exec = jest.fn()
+      //         .mockImplementation((command, callback) => callback(null, null, "stderr"));
+
+      //     return kube.deleteJobs().catch((error) => {
+
+      //         expect(error).toBeInstanceOf(Error);
+      //         expect(error.message).toEqual("stderr");
+      //         done();
+
+      //     });
+
+      // });
 
   });
 

@@ -1,8 +1,8 @@
 "use strict"
 
-const childProcess = require("child_process")
-const Promise = require("bluebird")
-const R = require("ramda")
+const childProcess = require("child_process");
+const Promise = require("bluebird");
+const R = require("ramda");
 
 const {ROLE, KUBE_SERVICE_ACCOUNT_TOKEN} = process.env;
 
@@ -26,11 +26,11 @@ const filterJobs = R.compose(
   R.length,
   R.intersection(['neo4j', 'elastic']),
   R.split('-'),
-  R.path(['metadata', 'name'])
+  R.pathOr('', ['metadata', 'name']),
 );
 
 function deleteJob (jobLabel) {
-  const deleteJobCmd = `kubectl --token ${KUBE_SERVICE_ACCOUNT_TOKEN} delete job/${job} role=${ROLE}`;
+  const deleteJobCmd = `kubectl --token ${KUBE_SERVICE_ACCOUNT_TOKEN} delete jobs ${jobLabel}`;
   return execPromise(deleteJobCmd)
 }
 
@@ -41,17 +41,16 @@ const getJobLabels = forIngestType => R.compose(
   R.prop('items')
 )
 
-function deleteJobs(ingestType) {
+function deleteJobs(ingestType, ingestName) {
   let jobsToDelete;
   const forIngestType = ingestType === 'incremental' ? new RegExp(/-delta-/) : new RegExp(/-bulk-/);
   const listJobsCmd = `kubectl --token ${KUBE_SERVICE_ACCOUNT_TOKEN} get jobs -o json`;
   
   return execPromise(listJobsCmd)
     .then(jobsList => {
-      jobsToDelete = getJobLabels(forIngestType)(jobsList);
-      
-      console.log({jobsToDelete});
-
+      jobsToDelete = getJobLabels(forIngestType)(JSON.parse(jobsList));
+      jobsToDelete = jobsToDelete.filter(jobName => jobName.split('-')[2] !== ingestName);
+      console.log(jobsToDelete)
       return Promise.all([jobsToDelete.map(deleteJob)]);
     })
     .then(() => (jobsToDelete));
@@ -97,5 +96,6 @@ module.exports = {
     createJob,
     deleteJobs,
     labelJob,
-    getJobStatus
+    getJobStatus,
+    getJobLabels
 };

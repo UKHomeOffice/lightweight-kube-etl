@@ -24,7 +24,7 @@ class KubeAPIClient extends EventEmitter {
     
     self.emit('msg', `==============${new Date()}============\nStarting ${ingestType} ingestions from folder ${ingestName}`);
 
-    return deleteJobs(ingestType)    
+    return deleteJobs(ingestType, ingestName)    
       .then(deletedJobs => {
         self.emit('msg', `Deleted jobs - ${JSON.stringify(deletedJobs, null, 4)}`);
         self.emit('msg', `Running jobs - ${JSON.stringify([
@@ -36,7 +36,10 @@ class KubeAPIClient extends EventEmitter {
       .then(() => {
         self.emit('msg', `${new Date()} - Completed ${ingestType} ${ingestName}`);
         self.emit('completed', {ingestType, ingestName}); 
-      }) 
+      })
+      .catch(err => {
+        self.emit('error', JSON.stringify(err, null, 4));
+      })
   }
 }
 

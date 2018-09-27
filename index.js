@@ -24,13 +24,24 @@ function go () {
     }
 
     if (!result.Contents.length) {
-      console.error('s3 bucket is empty');
+      console.error(`${BUCKET} empty at ${new Date()}`);
       return setTimeout(go, timeout);
     }
 
     currentIngestFoldersAndFiles = result.Contents;
     
-    const nextIngestJobParams = _getIngestNameAndType(currentIngestFoldersAndFiles);
+    const nextIngestJobParams = R.compose(
+      R.evolve({ingestType: R.replace(".txt", "")}),
+      R.zipObj(["ingestName", "ingestType"]),
+      R.tail,
+      R.head,
+      R.sort((older, newer) => (older[1] > newer[1])),
+      R.filter(R.compose(R.contains(R.__, ["bulk.txt", "incremental.txt"]), R.last)),
+      R.map(R.take(3)),
+      R.map(R.compose(R.split("/"), R.prop("Key")))
+    )(currentIngestFoldersAndFiles);
+
+    console.log(`New ${nextIngestJobParams.ingestType} ingest uploading into ${nextIngestJobParams.ingestName} - waiting for manifest.json`);
     
     poll(nextIngestJobParams, ready);
   });
@@ -60,31 +71,21 @@ function ready (nextIngestJobParams) {
   kubeClient.startNextIngestJob(nextIngestJobParams);
 }
 
-function onCompleted ({injestName, ingestType}) {
+function onCompleted ({ingestName, ingestType}) {
   const deleteParams = {
     Bucket: BUCKET,
     Delete: {
-      Objects: R.map(R.pick('Key'), currentIngestFoldersAndFiles),
+      Objects: R.map(R.pick(['Key']), currentIngestFoldersAndFiles),
       Quiet: true
     }
   }
+
   client.deleteObjects(deleteParams, (err) => {
     if (err) return console.error(err);
 
-    console.log(`Deleted ${ingestType} ${ingestName}/**/* from ${BUCKET}`);
+    console.log(`${new Date()} Deleted ${ingestType} ${ingestName}/**/* from ${BUCKET}`);
     setTimeout(go, timeout);
   });
 }
-
-const _getIngestNameAndType = R.compose(
-  R.evolve({ingestType: R.replace(".txt", "")}),
-  R.zipObj(["ingestName", "ingestType"]),
-  R.tail,
-  R.head,
-  R.sort((older, newer) => (older[1] > newer[1])),
-  R.filter(R.compose(R.contains(R.__, ["bulk.txt", "incremental.txt"]), R.last)),
-  R.map(R.take(3)),
-  R.map(R.compose(R.split("/"), R.prop("Key")))
-);
 
 go();
