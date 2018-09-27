@@ -3,12 +3,20 @@
 const etl = require("../src/etl")
 const s3 = require("../src/s3")
 const mongodb = require("../src/mongodb")
-const kube = require("../src/kube")
-jest.mock("../src/kube")
+const kube = require("../src/kubernetesClient")
+const ingestionService = require("../src/ingestionService");
+
+jest.mock("../src/kubernetesClient")
 
 s3.checkManifest = jest.fn().mockImplementation(() => Promise.resolve(true))
-s3.getJobType = jest.fn().mockImplementation(() => Promise.resolve("delta"))
-mongodb.insert= jest.fn().mockImplementation(() => Promise.resolve())
+s3.getIngestType = jest.fn().mockImplementation(() => Promise.resolve("delta"))
+mongodb.insert = jest.fn().mockImplementation(() => Promise.resolve({ result: "mongoCommandResponse" }))
+ingestionService.runIngest = jest.fn().mockImplementation(() => Promise.resolve())
+
+global.console = {
+    info: jest.fn(),
+    error: jest.fn()
+};
 
 const mockMessages = [
   {
@@ -96,39 +104,61 @@ describe("etl", () => {
     })
   })
 
-  describe("sqsMessageHandler", () => {
-    jest.spyOn(kube, "startKubeJob").mockReturnValue(true)
+  describe("messageHandler", () => {
+    // jest.spyOn(kube, "runKubeJob").mockReturnValue(true)
     const doneMock = jest.fn()
 
     beforeEach(() => {
-      kube.startKubeJob.mockReset()
+      ingestionService.runIngest.mockClear()
       doneMock.mockReset()
     })
 
     it("should call done function if the message does not contain a manifest key", function() {
       const mockNonManifestMessage = mockMessages[1]
       return etl
-        .sqsMessageHandler(mockNonManifestMessage, doneMock)
+        .messageHandler(mockNonManifestMessage, doneMock)
         .then(() => {
           expect(doneMock).toHaveBeenCalledTimes(1)
-          expect(kube.startKubeJob).toHaveBeenCalledTimes(0)
+          expect(ingestionService.runIngest).toHaveBeenCalledTimes(0)
         })
-    })
-
-    it("should start the kube job if the manifest is good", async () => {
-      await etl.sqsMessageHandler(mockMessages[0], doneMock)
-
-      expect(doneMock).toHaveBeenCalledTimes(1)
-      expect(kube.startKubeJob).toHaveBeenCalledTimes(2)
     })
 
     // TODO
     // it("should not start the kube job if the manifest is incorrect", async () => {
     //   s3.checkManifest = jest.fn(bucket => Promise.resolve(false))
-    //   await etl.sqsMessageHandler(mockMessages[0], doneMock)
+    //   await etl.messageHandler(mockMessages[0], doneMock)
     //
     //   expect(doneMock).toHaveBeenCalledTimes(1)
     //   expect(kube.startKubeJob).toHaveBeenCalledTimes(0)
     // })
+
+    it("should ask ingestion service to run correct job", () => {
+
+        const mockNonManifestMessage = mockMessages[0];
+
+        return etl.messageHandler(mockNonManifestMessage, doneMock).then(() => {
+
+            expect(ingestionService.runIngest).toHaveBeenCalledTimes(1);
+            expect(ingestionService.runIngest.mock.calls[0][0]).toEqual("delta");
+            expect(ingestionService.runIngest.mock.calls[0][1]).toEqual("222222222333");
+
+        });
+
+    });
+
+    it("should call done with no arguments when ingest succeeds", () => {
+
+        const mockNonManifestMessage = mockMessages[0];
+
+        return etl.messageHandler(mockNonManifestMessage, doneMock).then(() => {
+
+            expect(doneMock).toHaveBeenCalledTimes(1);
+            expect(doneMock.mock.calls[0][0]).toEqual(undefined);
+
+        });
+
+    });
+
   })
+
 })

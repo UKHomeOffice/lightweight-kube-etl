@@ -1,41 +1,8 @@
 const request = require('request-promise');
-const { exec } = require('child_process');
+const { runJobs } = require('./ingestionService');
 const EventEmitter = require('events');
 const baseUrl = "http://127.0.0.1:8181";
 const R = require('ramda');
-
-// function execPromise(commandString) {
-//   return new Promise((resolve, reject) => {
-//     exec(commandString, (error, stdout, stderr) => {
-//       if (error || stderr) {
-//         return reject(new Error(error || stderr));
-//       }
-
-//       return resolve(stdout);
-//     });
-//   });
-// }
-
-/*
-    "status": {
-        "active": 1,
-        "startTime": "2018-09-26T15:52:15Z"
-    }
-
-    "status": {
-        "completionTime": "2018-09-26T15:58:00Z",
-        "conditions": [
-            {
-                "lastProbeTime": "2018-09-26T15:58:00Z",
-                "lastTransitionTime": "2018-09-26T15:58:00Z",
-                "status": "True",
-                "type": "Complete"
-            }
-        ],
-        "startTime": "2018-09-26T15:52:15Z",
-        "succeeded": 1
-    }
-*/
 
 class KubeAPIClient extends EventEmitter {
   constructor(KUBE_SERVICE_ACCOUNT_TOKEN) {
@@ -53,23 +20,23 @@ class KubeAPIClient extends EventEmitter {
   }
   
   startNextIngestJob ({ingestName, ingestType}) {
-    this.emit('msg', `==============${new Date()}============\nStarting ${ingestType} ingestions from folder ${ingestName}`);
+    const self = this;
+    
+    self.emit('msg', `==============${new Date()}============\nStarting ${ingestType} ingestions from folder ${ingestName}`);
 
     return this._getJobsToDelete(ingestType)
       .then(jobsToDelete => {
         !jobsToDelete.length
-        ? this.emit('msg', `No jobs to delete`)
-        : this.emit('msg', `Deleting jobs - ${JSON.stringify(jobsToDelete, null, 4)}`);
+        ? self.emit('msg', `No jobs to delete`)
+        : self.emit('msg', `Deleting jobs - ${JSON.stringify(jobsToDelete, null, 4)}`);
 
         return Promise.all(jobsToDelete.map(this.deleteJob.bind(this)));
       })
       .then(() => {
-        const nextIngestJobs = [
-          `neo4j-${ingestType}-${ingestName}`,
-          `elastic-${ingestType}-${ingestName}`
-        ];
-
-        return Promise.all(nextIngestJobs.map(this.createJob.bind(this)));
+        return runJobs(ingestType,ingestName )
+      })
+      .then(() => {
+        self.emit('finished', `${new Date()} - Completed ${ingestType} ${ingestName}`)
       })
   }
 
@@ -88,25 +55,6 @@ class KubeAPIClient extends EventEmitter {
     };
     
     return this._makeRequest(options);
-  }
-
-  createJob (jobName) {
-    const cronjob = R.compose(R.join('-'), R.slice(0, 2), R.split('-'))(jobName);
-    const createCmd = `knp --token ${this.token} create job ${jobName} --from=cronjob/${cronjob}`;
-    console.log(createCmd);
-    const self = this;
-
-    return execPromise(createCmd)
-      .then(() => {
-        self.emit('msg', `Created job - ${JSON.stringify(ingestName, null, 4)}`);
-
-        self.jobs[jobName] = 'running'
-
-        self.emit('msg', `Status - ${JSON.stringify(self.jobs, null, 4)}`);
-      })
-      .catch(err => {
-        self.emit('err', JSON.stringify(err, null, 4));
-      });
   }
 
   _getJobsToDelete (ingestType) {
