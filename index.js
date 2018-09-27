@@ -55,7 +55,7 @@ function poll (nextIngestJobParams, ready) {
 function ready (nextIngestJobParams) {
   kubeClient.on('msg', msg => console.log(msg));
   kubeClient.on('error', err => console.error(err));
-  kubeClient.on('completed', onCompleted);
+  kubeClient.on('completed', ingest => onCompleted(ingest));
   
   kubeClient.startNextIngestJob(nextIngestJobParams);
 }
@@ -88,4 +88,3 @@ const _getIngestNameAndType = R.compose(
 );
 
 go();
-

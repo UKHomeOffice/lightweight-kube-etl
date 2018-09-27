@@ -1,5 +1,5 @@
-const request = require('request-promise');
 const { runJobs } = require('./ingestionService');
+const { deleteJobs } = require('./kubernetesClient');
 const EventEmitter = require('events');
 const baseUrl = "http://127.0.0.1:8181";
 const R = require('ramda');
@@ -24,67 +24,19 @@ class KubeAPIClient extends EventEmitter {
     
     self.emit('msg', `==============${new Date()}============\nStarting ${ingestType} ingestions from folder ${ingestName}`);
 
-    return this._getJobsToDelete(ingestType)
-      .then(jobsToDelete => {
-        !jobsToDelete.length
-        ? self.emit('msg', `No jobs to delete`)
-        : self.emit('msg', `Deleting jobs - ${JSON.stringify(jobsToDelete, null, 4)}`);
-
-        return Promise.all(jobsToDelete.map(this.deleteJob.bind(this)));
-      })
-      .then(() => {
-        return runJobs(ingestType, ingestName);
+    return deleteJobs(ingestType)    
+      .then(deletedJobs => {
+        self.emit('msg', `Deleted jobs - ${JSON.stringify(deletedJobs, null, 4)}`);
+        self.emit('msg', `Running jobs - ${JSON.stringify([
+          `neo4j-${ingestType}-${ingestName}`,
+          `elastic-${ingestType}-${ingestName}`
+        ], null, 4)}`);
+        return runJobs(ingestType, ingestName)
       })
       .then(() => {
         self.emit('msg', `${new Date()} - Completed ${ingestType} ${ingestName}`);
-        self.emit('completed', {ingestType, ingestName});
-      })
-  }
-
-  deleteJob (deleteJobUrl) {
-    const getJobName = R.compose(R.last, R.split('/'));
-    
-    const options = {
-      uri: `${baseUrl}${deleteJobUrl}`,
-      method: 'DELETE',
-      body: {
-        kind: 'DeleteOptions',
-        name: getJobName(deleteJobUrl),
-        propagationPolicy: 'Background',
-        in: 3
-      }
-    };
-    
-    return this._makeRequest(options);
-  }
-
-  _getJobsToDelete (ingestType) {
-    const options = {
-      uri: `${baseUrl}/apis/batch/v1/namespaces/dacc-entitysearch/jobs`
-    };
-
-    const forIngestType = ingestType === 'incremental' ? new RegExp(/-delta-/) : new RegExp(/-bulk-/);
-
-    const filterJobs = R.compose(
-      R.gt(R.__, 0),
-      R.length,
-      R.intersection(['neo4j', 'elastic']),
-      R.split('-'),
-      R.path(['metadata', 'name'])
-    );
-
-    const formatGetJobResults = R.compose(
-      R.filter(R.test(forIngestType)),
-      R.map(R.path(['metadata', 'selfLink'])),
-      R.filter(filterJobs),
-      R.prop('items')
-    )
-  
-    return this._makeRequest(options).then(formatGetJobResults);
-  }
-
-  _makeRequest (options) {
-    return request(Object.assign({}, this.baseOptions, options));
+        self.emit('completed', {ingestType, ingestName}); 
+      }) 
   }
 }
 

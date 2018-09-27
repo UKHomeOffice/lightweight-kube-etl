@@ -21,11 +21,40 @@ function createJob(jobName, cronjobName) {
     return execPromise(kubectlCreateCommand);
 }
 
-function deleteJobs() {
+const filterJobs = R.compose(
+  R.gt(R.__, 0),
+  R.length,
+  R.intersection(['neo4j', 'elastic']),
+  R.split('-'),
+  R.path(['metadata', 'name'])
+);
 
-    const kubectlDeleteCommand = `kubectl --token ${KUBE_SERVICE_ACCOUNT_TOKEN} delete job -l role=${ROLE}`;
+function deleteJob (jobLabel) {
+  const deleteJobCmd = `kubectl --token ${KUBE_SERVICE_ACCOUNT_TOKEN} delete job/${job} role=${ROLE}`;
+  return execPromise(deleteJobCmd)
+}
 
-    return execPromise(kubectlDeleteCommand);
+const getJobLabels = forIngestType => R.compose(
+  R.filter(R.test(forIngestType)),
+  R.map(R.path(['metadata', 'name'])),
+  R.filter(filterJobs),
+  R.prop('items')
+)
+
+function deleteJobs(ingestType) {
+  let jobsToDelete;
+  const forIngestType = ingestType === 'incremental' ? new RegExp(/-delta-/) : new RegExp(/-bulk-/);
+  const listJobsCmd = `kubectl --token ${KUBE_SERVICE_ACCOUNT_TOKEN} get jobs -o json`;
+  
+  return execPromise(listJobsCmd)
+    .then(jobsList => {
+      jobsToDelete = getJobLabels(forIngestType)(jobsList);
+      
+      console.log({jobsToDelete});
+
+      return Promise.all([jobsToDelete.map(deleteJob)]);
+    })
+    .then(() => (jobsToDelete));
 }
 
 function labelJob(jobName) {

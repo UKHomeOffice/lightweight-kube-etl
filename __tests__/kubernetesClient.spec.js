@@ -71,7 +71,7 @@ describe("kube", () => {
 
   });
 
-  describe("when asked to delete a job", () => {
+  describe.skip("when asked to delete a job", () => {
 
       it("should exec correct kubectl command with correct label", () => {
 
