@@ -8,14 +8,14 @@ const {ROLE, KUBE_SERVICE_ACCOUNT_TOKEN} = process.env;
 
 
 function getPods() {
-  const kubectlGetPodsCommand = `/app/kubectl get pods`
+  const kubectlGetPodsCommand = `kubectl get pods`
 
   return execPromise(kubectlGetPodsCommand)
 }
 
 function createJob(jobName, cronjobName) {
 
-    const kubectlCreateCommand = "/app/kubectl --token " + KUBE_SERVICE_ACCOUNT_TOKEN +
+    const kubectlCreateCommand = "kubectl --token " + KUBE_SERVICE_ACCOUNT_TOKEN +
         " create job " + jobName + " --from=cronjob/" + cronjobName;
 
     return execPromise(kubectlCreateCommand);
@@ -23,14 +23,14 @@ function createJob(jobName, cronjobName) {
 
 function deleteJobs() {
 
-    const kubectlDeleteCommand = `/app/kubectl --token ${KUBE_SERVICE_ACCOUNT_TOKEN} delete job -l role=${ROLE}`;
+    const kubectlDeleteCommand = `kubectl --token ${KUBE_SERVICE_ACCOUNT_TOKEN} delete job -l role=${ROLE}`;
 
     return execPromise(kubectlDeleteCommand);
 }
 
 function labelJob(jobName) {
 
-    const kubectlLabelCommand = `/app/kubectl --token ${KUBE_SERVICE_ACCOUNT_TOKEN} label job ${jobName} role=${ROLE}`;
+    const kubectlLabelCommand = `kubectl --token ${KUBE_SERVICE_ACCOUNT_TOKEN} label job ${jobName} role=${ROLE}`;
 
     return execPromise(kubectlLabelCommand);
 }
@@ -38,7 +38,7 @@ function labelJob(jobName) {
 // TODO: need to check kubectl response for job failure & reject Error
 function getJobStatus(jobName) {
 
-    const kubectlPodStatusCommand = `/app/kubectl --token ${KUBE_SERVICE_ACCOUNT_TOKEN} get job ${jobName} -o json`;
+    const kubectlPodStatusCommand = `kubectl --token ${KUBE_SERVICE_ACCOUNT_TOKEN} get job ${jobName} -o json`;
 
     return execPromise(kubectlPodStatusCommand).then(JSON.parse)
         .then(({ status }) => ({ completed: R.has("succeeded", status) }));
