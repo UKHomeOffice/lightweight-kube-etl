@@ -1,0 +1,915 @@
+{
+  "apiVersion": "v1",
+  "items": [
+      {
+          "apiVersion": "batch/v1",
+          "kind": "Job",
+          "metadata": {
+              "annotations": {
+                  "cronjob.kubernetes.io/instantiate": "manual"
+              },
+              "creationTimestamp": "2018-09-25T13:56:58Z",
+              "labels": {
+                  "controller-uid": "de6d1dd7-c0ca-11e8-aa7f-0244e0647640",
+                  "job-name": "download-job"
+              },
+              "name": "download-job",
+              "namespace": "dacc-entitysearch",
+              "resourceVersion": "131841300",
+              "selfLink": "/apis/batch/v1/namespaces/dacc-entitysearch/jobs/download-job",
+              "uid": "de6d1dd7-c0ca-11e8-aa7f-0244e0647640"
+          },
+          "spec": {
+              "backoffLimit": 6,
+              "completions": 1,
+              "parallelism": 1,
+              "selector": {
+                  "matchLabels": {
+                      "controller-uid": "de6d1dd7-c0ca-11e8-aa7f-0244e0647640"
+                  }
+              },
+              "template": {
+                  "metadata": {
+                      "creationTimestamp": null,
+                      "labels": {
+                          "controller-uid": "de6d1dd7-c0ca-11e8-aa7f-0244e0647640",
+                          "job-name": "download-job"
+                      }
+                  },
+                  "spec": {
+                      "containers": [
+                          {
+                              "args": [
+                                  "sleep 1000000;"
+                              ],
+                              "command": [
+                                  "/bin/sh",
+                                  "-c"
+                              ],
+                              "env": [
+                                  {
+                                      "name": "AWS_ACCESS_KEY_ID",
+                                      "valueFrom": {
+                                          "secretKeyRef": {
+                                              "key": "access_key_id",
+                                              "name": "landing-s3"
+                                          }
+                                      }
+                                  },
+                                  {
+                                      "name": "BUCKET",
+                                      "valueFrom": {
+                                          "secretKeyRef": {
+                                              "key": "bucket_name",
+                                              "name": "landing-s3"
+                                          }
+                                      }
+                                  },
+                                  {
+                                      "name": "AWS_SECRET_ACCESS_KEY",
+                                      "valueFrom": {
+                                          "secretKeyRef": {
+                                              "key": "secret_access_key",
+                                              "name": "landing-s3"
+                                          }
+                                      }
+                                  },
+                                  {
+                                      "name": "S3_ACCESS_KEY",
+                                      "valueFrom": {
+                                          "secretKeyRef": {
+                                              "key": "access_key_id",
+                                              "name": "landing-s3"
+                                          }
+                                      }
+                                  },
+                                  {
+                                      "name": "S3_SECRET_KEY",
+                                      "valueFrom": {
+                                          "secretKeyRef": {
+                                              "key": "secret_access_key",
+                                              "name": "landing-s3"
+                                          }
+                                      }
+                                  }
+                              ],
+                              "image": "docker.digital.homeoffice.gov.uk/library/awscli",
+                              "imagePullPolicy": "Always",
+                              "name": "fetchnew",
+                              "resources": {
+                                  "limits": {
+                                      "cpu": "1",
+                                      "memory": "10Gi"
+                                  },
+                                  "requests": {
+                                      "cpu": "1",
+                                      "memory": "2Gi"
+                                  }
+                              },
+                              "securityContext": {
+                                  "runAsNonRoot": true
+                              },
+                              "terminationMessagePath": "/dev/termination-log",
+                              "terminationMessagePolicy": "File",
+                              "volumeMounts": [
+                                  {
+                                      "mountPath": "/data",
+                                      "name": "download-job-volume"
+                                  }
+                              ]
+                          }
+                      ],
+                      "dnsPolicy": "ClusterFirst",
+                      "imagePullSecrets": [
+                          {
+                              "name": "artifactory-secret"
+                          }
+                      ],
+                      "restartPolicy": "OnFailure",
+                      "schedulerName": "default-scheduler",
+                      "securityContext": {
+                          "fsGroup": 1000,
+                          "runAsUser": 1000
+                      },
+                      "terminationGracePeriodSeconds": 30,
+                      "volumes": [
+                          {
+                              "name": "download-job-volume",
+                              "persistentVolumeClaim": {
+                                  "claimName": "download-job-volume"
+                              }
+                          }
+                      ]
+                  }
+              }
+          },
+          "status": {
+              "active": 1,
+              "startTime": "2018-09-25T13:56:58Z"
+          }
+      },
+      {
+          "apiVersion": "batch/v1",
+          "kind": "Job",
+          "metadata": {
+              "annotations": {
+                  "cronjob.kubernetes.io/instantiate": "manual"
+              },
+              "creationTimestamp": "2018-09-25T14:10:20Z",
+              "labels": {
+                  "controller-uid": "bc96bb11-c0cc-11e8-af0a-065c9d736978",
+                  "job-name": "elastic-delta-1537362018"
+              },
+              "name": "elastic-delta-1537362018",
+              "namespace": "dacc-entitysearch",
+              "resourceVersion": "131847355",
+              "selfLink": "/apis/batch/v1/namespaces/dacc-entitysearch/jobs/elastic-delta-1537362018",
+              "uid": "bc96bb11-c0cc-11e8-af0a-065c9d736978"
+          },
+          "spec": {
+              "backoffLimit": 6,
+              "completions": 1,
+              "parallelism": 1,
+              "selector": {
+                  "matchLabels": {
+                      "controller-uid": "bc96bb11-c0cc-11e8-af0a-065c9d736978"
+                  }
+              },
+              "template": {
+                  "metadata": {
+                      "creationTimestamp": null,
+                      "labels": {
+                          "controller-uid": "bc96bb11-c0cc-11e8-af0a-065c9d736978",
+                          "job-name": "elastic-delta-1537362018"
+                      }
+                  },
+                  "spec": {
+                      "containers": [
+                          {
+                              "command": [
+                                  "sh",
+                                  "-c",
+                                  "drone-trigger \\\n --repo hodac/kube-entitysearch \\\n --drone-server ${DRONE_SERVER} \\\n --drone-token ${DRONE_TOKEN} \\\n -d ${DRONE_DEPLOY_TO} \\\n -p DATABASE_TO_ROLL_UPDATE=elastic \\\n -p DRONE_DEPLOY_TO=${DRONE_DEPLOY_TO}\n"
+                              ],
+                              "env": [
+                                  {
+                                      "name": "DRONE_DEPLOY_TO",
+                                      "valueFrom": {
+                                          "secretKeyRef": {
+                                              "key": "drone_deploy_to",
+                                              "name": "drone-secrets"
+                                          }
+                                      }
+                                  },
+                                  {
+                                      "name": "DRONE_TOKEN",
+                                      "valueFrom": {
+                                          "secretKeyRef": {
+                                              "key": "drone_token",
+                                              "name": "drone-secrets"
+                                          }
+                                      }
+                                  },
+                                  {
+                                      "name": "DRONE_SERVER",
+                                      "valueFrom": {
+                                          "secretKeyRef": {
+                                              "key": "drone_server",
+                                              "name": "drone-secrets"
+                                          }
+                                      }
+                                  }
+                              ],
+                              "image": "quay.io/ukhomeofficedigital/drone-trigger:latest",
+                              "imagePullPolicy": "Always",
+                              "name": "trigger-rolling-update",
+                              "resources": {},
+                              "securityContext": {
+                                  "runAsNonRoot": true
+                              },
+                              "terminationMessagePath": "/dev/termination-log",
+                              "terminationMessagePolicy": "File"
+                          }
+                      ],
+                      "dnsPolicy": "ClusterFirst",
+                      "imagePullSecrets": [
+                          {
+                              "name": "artifactory-secret"
+                          }
+                      ],
+                      "initContainers": [
+                          {
+                              "args": [
+                                  "rm -rf /data/ingest; mkdir -p /data/ingest; chmod -R 755 /data/ingest; export INGEST_TIMESTAMP=$(echo $HOSTNAME | cut -d'-' -f3); s4cmd dsync --verbose --force --sync-check -r -c 120 s3://${BUCKET}/pending/${INGEST_TIMESTAMP}/ /data/ingest/pending/${INGEST_TIMESTAMP}/;"
+                              ],
+                              "command": [
+                                  "/bin/sh",
+                                  "-c"
+                              ],
+                              "env": [
+                                  {
+                                      "name": "S3_ACCESS_KEY",
+                                      "valueFrom": {
+                                          "secretKeyRef": {
+                                              "key": "access_key_id",
+                                              "name": "landing-s3"
+                                          }
+                                      }
+                                  },
+                                  {
+                                      "name": "BUCKET",
+                                      "valueFrom": {
+                                          "secretKeyRef": {
+                                              "key": "bucket_name",
+                                              "name": "landing-s3"
+                                          }
+                                      }
+                                  },
+                                  {
+                                      "name": "S3_SECRET_KEY",
+                                      "valueFrom": {
+                                          "secretKeyRef": {
+                                              "key": "secret_access_key",
+                                              "name": "landing-s3"
+                                          }
+                                      }
+                                  }
+                              ],
+                              "image": "docker.digital.homeoffice.gov.uk/library/s4cmd:2.0.1",
+                              "imagePullPolicy": "Always",
+                              "name": "fetchnew",
+                              "resources": {
+                                  "limits": {
+                                      "cpu": "1",
+                                      "memory": "10Gi"
+                                  },
+                                  "requests": {
+                                      "cpu": "1",
+                                      "memory": "2Gi"
+                                  }
+                              },
+                              "securityContext": {
+                                  "runAsNonRoot": true
+                              },
+                              "terminationMessagePath": "/dev/termination-log",
+                              "terminationMessagePolicy": "File",
+                              "volumeMounts": [
+                                  {
+                                      "mountPath": "/data",
+                                      "name": "ingest-data-elasticsearch"
+                                  }
+                              ]
+                          },
+                          {
+                              "env": [
+                                  {
+                                      "name": "NODE_NAME",
+                                      "value": "es-elastic"
+                                  },
+                                  {
+                                      "name": "XPACK_SECURITY_ENABLE",
+                                      "value": "true"
+                                  },
+                                  {
+                                      "name": "ELASTIC_SEARCH_HEAP_SIZE",
+                                      "value": "32g"
+                                  },
+                                  {
+                                      "name": "SLEEP_TIME",
+                                      "value": "300"
+                                  },
+                                  {
+                                      "name": "THREAD_POOL_BULK_QUEUE_SIZE",
+                                      "value": "3000"
+                                  },
+                                  {
+                                      "name": "MEMORY_LOCK",
+                                      "value": "true"
+                                  },
+                                  {
+                                      "name": "PROCESS_NAME",
+                                      "value": "elasticsearch-ingest"
+                                  },
+                                  {
+                                      "name": "ELASTIC_HOSTNAME",
+                                      "value": "localhost"
+                                  },
+                                  {
+                                      "name": "ELASTIC_PORT",
+                                      "value": "9200"
+                                  },
+                                  {
+                                      "name": "ELASTIC_USERNAME",
+                                      "valueFrom": {
+                                          "secretKeyRef": {
+                                              "key": "username",
+                                              "name": "elastic-ingestion"
+                                          }
+                                      }
+                                  },
+                                  {
+                                      "name": "ELASTIC_PASSWORD",
+                                      "valueFrom": {
+                                          "secretKeyRef": {
+                                              "key": "password",
+                                              "name": "elastic-ingestion"
+                                          }
+                                      }
+                                  },
+                                  {
+                                      "name": "INGESTION_TYPE",
+                                      "value": "incremental"
+                                  },
+                                  {
+                                      "name": "INGESTION_DATA_PATH",
+                                      "value": "/data/ingest/"
+                                  },
+                                  {
+                                      "name": "INGEST_FOLDER",
+                                      "value": "ingest/"
+                                  },
+                                  {
+                                      "name": "ELASTIC_SNAPSHOT_REPO"
+                                  },
+                                  {
+                                      "name": "ELASTIC_SNAPSHOT_SKIP",
+                                      "value": "true"
+                                  },
+                                  {
+                                      "name": "DB_START_DELAY",
+                                      "value": "100"
+                                  },
+                                  {
+                                      "name": "SLEEP_PERIOD",
+                                      "value": "2"
+                                  }
+                              ],
+                              "image": "docker.digital.homeoffice.gov.uk/ukhomeofficedigital/entity-search-elastic-daily-ingest:development",
+                              "imagePullPolicy": "Always",
+                              "name": "build",
+                              "ports": [
+                                  {
+                                      "containerPort": 9300,
+                                      "name": "transport",
+                                      "protocol": "TCP"
+                                  },
+                                  {
+                                      "containerPort": 9200,
+                                      "name": "http",
+                                      "protocol": "TCP"
+                                  }
+                              ],
+                              "resources": {
+                                  "limits": {
+                                      "cpu": "56",
+                                      "memory": "144Gi"
+                                  },
+                                  "requests": {
+                                      "cpu": "10",
+                                      "memory": "32Gi"
+                                  }
+                              },
+                              "securityContext": {
+                                  "runAsNonRoot": true
+                              },
+                              "terminationMessagePath": "/dev/termination-log",
+                              "terminationMessagePolicy": "File",
+                              "volumeMounts": [
+                                  {
+                                      "mountPath": "/data",
+                                      "name": "ingest-data-elasticsearch"
+                                  }
+                              ]
+                          },
+                          {
+                              "args": [
+                                  "aws s3 sync --delete --sse aws:kms /data/nodes s3://${BUCKET}/data/nodes;"
+                              ],
+                              "command": [
+                                  "/bin/sh",
+                                  "-c"
+                              ],
+                              "env": [
+                                  {
+                                      "name": "AWS_ACCESS_KEY_ID",
+                                      "valueFrom": {
+                                          "secretKeyRef": {
+                                              "key": "access_key_id",
+                                              "name": "data-s3"
+                                          }
+                                      }
+                                  },
+                                  {
+                                      "name": "BUCKET",
+                                      "valueFrom": {
+                                          "secretKeyRef": {
+                                              "key": "bucket_name",
+                                              "name": "data-s3"
+                                          }
+                                      }
+                                  },
+                                  {
+                                      "name": "AWS_SECRET_ACCESS_KEY",
+                                      "valueFrom": {
+                                          "secretKeyRef": {
+                                              "key": "secret_access_key",
+                                              "name": "data-s3"
+                                          }
+                                      }
+                                  }
+                              ],
+                              "image": "docker.digital.homeoffice.gov.uk/library/awscli:1.16.19",
+                              "imagePullPolicy": "Always",
+                              "name": "upload",
+                              "resources": {
+                                  "limits": {
+                                      "cpu": "1",
+                                      "memory": "16Gi"
+                                  },
+                                  "requests": {
+                                      "cpu": "1",
+                                      "memory": "16Gi"
+                                  }
+                              },
+                              "securityContext": {
+                                  "runAsNonRoot": true
+                              },
+                              "terminationMessagePath": "/dev/termination-log",
+                              "terminationMessagePolicy": "File",
+                              "volumeMounts": [
+                                  {
+                                      "mountPath": "/data",
+                                      "name": "ingest-data-elasticsearch"
+                                  }
+                              ]
+                          }
+                      ],
+                      "nodeSelector": {
+                          "role": "dacc-entitysearch-m16x"
+                      },
+                      "restartPolicy": "OnFailure",
+                      "schedulerName": "default-scheduler",
+                      "securityContext": {
+                          "fsGroup": 1000,
+                          "runAsUser": 1000
+                      },
+                      "terminationGracePeriodSeconds": 30,
+                      "tolerations": [
+                          {
+                              "effect": "NoSchedule",
+                              "key": "dedicated",
+                              "operator": "Equal",
+                              "value": "dacc-entitysearch-m16x"
+                          }
+                      ],
+                      "volumes": [
+                          {
+                              "name": "ingest-data-elasticsearch",
+                              "persistentVolumeClaim": {
+                                  "claimName": "ingest-data-elasticsearch"
+                              }
+                          }
+                      ]
+                  }
+              }
+          },
+          "status": {
+              "completionTime": "2018-09-25T14:14:43Z",
+              "conditions": [
+                  {
+                      "lastProbeTime": "2018-09-25T14:14:43Z",
+                      "lastTransitionTime": "2018-09-25T14:14:43Z",
+                      "status": "True",
+                      "type": "Complete"
+                  }
+              ],
+              "startTime": "2018-09-25T14:10:20Z",
+              "succeeded": 1
+          }
+      },
+      {
+          "apiVersion": "batch/v1",
+          "kind": "Job",
+          "metadata": {
+              "annotations": {
+                  "cronjob.kubernetes.io/instantiate": "manual"
+              },
+              "creationTimestamp": "2018-09-25T14:21:52Z",
+              "labels": {
+                  "controller-uid": "59448fdf-c0ce-11e8-ae37-066222a213bc",
+                  "job-name": "elastic-delta-1537362030"
+              },
+              "name": "elastic-delta-1537362030",
+              "namespace": "dacc-entitysearch",
+              "resourceVersion": "131851204",
+              "selfLink": "/apis/batch/v1/namespaces/dacc-entitysearch/jobs/elastic-delta-1537362030",
+              "uid": "59448fdf-c0ce-11e8-ae37-066222a213bc"
+          },
+          "spec": {
+              "backoffLimit": 6,
+              "completions": 1,
+              "parallelism": 1,
+              "selector": {
+                  "matchLabels": {
+                      "controller-uid": "59448fdf-c0ce-11e8-ae37-066222a213bc"
+                  }
+              },
+              "template": {
+                  "metadata": {
+                      "creationTimestamp": null,
+                      "labels": {
+                          "controller-uid": "59448fdf-c0ce-11e8-ae37-066222a213bc",
+                          "job-name": "elastic-delta-1537362030"
+                      }
+                  },
+                  "spec": {
+                      "containers": [
+                          {
+                              "command": [
+                                  "sh",
+                                  "-c",
+                                  "drone-trigger \\\n --repo hodac/kube-entitysearch \\\n --drone-server ${DRONE_SERVER} \\\n --drone-token ${DRONE_TOKEN} \\\n -d ${DRONE_DEPLOY_TO} \\\n -p DATABASE_TO_ROLL_UPDATE=elastic \\\n -p DRONE_DEPLOY_TO=${DRONE_DEPLOY_TO}\n"
+                              ],
+                              "env": [
+                                  {
+                                      "name": "DRONE_DEPLOY_TO",
+                                      "valueFrom": {
+                                          "secretKeyRef": {
+                                              "key": "drone_deploy_to",
+                                              "name": "drone-secrets"
+                                          }
+                                      }
+                                  },
+                                  {
+                                      "name": "DRONE_TOKEN",
+                                      "valueFrom": {
+                                          "secretKeyRef": {
+                                              "key": "drone_token",
+                                              "name": "drone-secrets"
+                                          }
+                                      }
+                                  },
+                                  {
+                                      "name": "DRONE_SERVER",
+                                      "valueFrom": {
+                                          "secretKeyRef": {
+                                              "key": "drone_server",
+                                              "name": "drone-secrets"
+                                          }
+                                      }
+                                  }
+                              ],
+                              "image": "quay.io/ukhomeofficedigital/drone-trigger:latest",
+                              "imagePullPolicy": "Always",
+                              "name": "trigger-rolling-update",
+                              "resources": {},
+                              "securityContext": {
+                                  "runAsNonRoot": true
+                              },
+                              "terminationMessagePath": "/dev/termination-log",
+                              "terminationMessagePolicy": "File"
+                          }
+                      ],
+                      "dnsPolicy": "ClusterFirst",
+                      "imagePullSecrets": [
+                          {
+                              "name": "artifactory-secret"
+                          }
+                      ],
+                      "initContainers": [
+                          {
+                              "args": [
+                                  "rm -rf /data/ingest; mkdir -p /data/ingest; chmod -R 755 /data/ingest; export INGEST_TIMESTAMP=$(echo $HOSTNAME | cut -d'-' -f3); s4cmd dsync --verbose --force --sync-check -r -c 120 s3://${BUCKET}/pending/${INGEST_TIMESTAMP}/ /data/ingest/pending/${INGEST_TIMESTAMP}/;"
+                              ],
+                              "command": [
+                                  "/bin/sh",
+                                  "-c"
+                              ],
+                              "env": [
+                                  {
+                                      "name": "S3_ACCESS_KEY",
+                                      "valueFrom": {
+                                          "secretKeyRef": {
+                                              "key": "access_key_id",
+                                              "name": "landing-s3"
+                                          }
+                                      }
+                                  },
+                                  {
+                                      "name": "BUCKET",
+                                      "valueFrom": {
+                                          "secretKeyRef": {
+                                              "key": "bucket_name",
+                                              "name": "landing-s3"
+                                          }
+                                      }
+                                  },
+                                  {
+                                      "name": "S3_SECRET_KEY",
+                                      "valueFrom": {
+                                          "secretKeyRef": {
+                                              "key": "secret_access_key",
+                                              "name": "landing-s3"
+                                          }
+                                      }
+                                  }
+                              ],
+                              "image": "docker.digital.homeoffice.gov.uk/library/s4cmd:2.0.1",
+                              "imagePullPolicy": "Always",
+                              "name": "fetchnew",
+                              "resources": {
+                                  "limits": {
+                                      "cpu": "1",
+                                      "memory": "10Gi"
+                                  },
+                                  "requests": {
+                                      "cpu": "1",
+                                      "memory": "2Gi"
+                                  }
+                              },
+                              "securityContext": {
+                                  "runAsNonRoot": true
+                              },
+                              "terminationMessagePath": "/dev/termination-log",
+                              "terminationMessagePolicy": "File",
+                              "volumeMounts": [
+                                  {
+                                      "mountPath": "/data",
+                                      "name": "ingest-data-elasticsearch"
+                                  }
+                              ]
+                          },
+                          {
+                              "env": [
+                                  {
+                                      "name": "NODE_NAME",
+                                      "value": "es-elastic"
+                                  },
+                                  {
+                                      "name": "XPACK_SECURITY_ENABLE",
+                                      "value": "true"
+                                  },
+                                  {
+                                      "name": "ELASTIC_SEARCH_HEAP_SIZE",
+                                      "value": "32g"
+                                  },
+                                  {
+                                      "name": "SLEEP_TIME",
+                                      "value": "300"
+                                  },
+                                  {
+                                      "name": "THREAD_POOL_BULK_QUEUE_SIZE",
+                                      "value": "3000"
+                                  },
+                                  {
+                                      "name": "MEMORY_LOCK",
+                                      "value": "true"
+                                  },
+                                  {
+                                      "name": "PROCESS_NAME",
+                                      "value": "elasticsearch-ingest"
+                                  },
+                                  {
+                                      "name": "ELASTIC_HOSTNAME",
+                                      "value": "localhost"
+                                  },
+                                  {
+                                      "name": "ELASTIC_PORT",
+                                      "value": "9200"
+                                  },
+                                  {
+                                      "name": "ELASTIC_USERNAME",
+                                      "valueFrom": {
+                                          "secretKeyRef": {
+                                              "key": "username",
+                                              "name": "elastic-ingestion"
+                                          }
+                                      }
+                                  },
+                                  {
+                                      "name": "ELASTIC_PASSWORD",
+                                      "valueFrom": {
+                                          "secretKeyRef": {
+                                              "key": "password",
+                                              "name": "elastic-ingestion"
+                                          }
+                                      }
+                                  },
+                                  {
+                                      "name": "INGESTION_TYPE",
+                                      "value": "incremental"
+                                  },
+                                  {
+                                      "name": "INGESTION_DATA_PATH",
+                                      "value": "/data/ingest/"
+                                  },
+                                  {
+                                      "name": "INGEST_FOLDER",
+                                      "value": "ingest/"
+                                  },
+                                  {
+                                      "name": "ELASTIC_SNAPSHOT_REPO"
+                                  },
+                                  {
+                                      "name": "ELASTIC_SNAPSHOT_SKIP",
+                                      "value": "true"
+                                  },
+                                  {
+                                      "name": "DB_START_DELAY",
+                                      "value": "100"
+                                  },
+                                  {
+                                      "name": "SLEEP_PERIOD",
+                                      "value": "2"
+                                  }
+                              ],
+                              "image": "docker.digital.homeoffice.gov.uk/ukhomeofficedigital/entity-search-elastic-daily-ingest:development",
+                              "imagePullPolicy": "Always",
+                              "name": "build",
+                              "ports": [
+                                  {
+                                      "containerPort": 9300,
+                                      "name": "transport",
+                                      "protocol": "TCP"
+                                  },
+                                  {
+                                      "containerPort": 9200,
+                                      "name": "http",
+                                      "protocol": "TCP"
+                                  }
+                              ],
+                              "resources": {
+                                  "limits": {
+                                      "cpu": "56",
+                                      "memory": "144Gi"
+                                  },
+                                  "requests": {
+                                      "cpu": "10",
+                                      "memory": "32Gi"
+                                  }
+                              },
+                              "securityContext": {
+                                  "runAsNonRoot": true
+                              },
+                              "terminationMessagePath": "/dev/termination-log",
+                              "terminationMessagePolicy": "File",
+                              "volumeMounts": [
+                                  {
+                                      "mountPath": "/data",
+                                      "name": "ingest-data-elasticsearch"
+                                  }
+                              ]
+                          },
+                          {
+                              "args": [
+                                  "aws s3 sync --delete --sse aws:kms /data/nodes s3://${BUCKET}/data/nodes;"
+                              ],
+                              "command": [
+                                  "/bin/sh",
+                                  "-c"
+                              ],
+                              "env": [
+                                  {
+                                      "name": "AWS_ACCESS_KEY_ID",
+                                      "valueFrom": {
+                                          "secretKeyRef": {
+                                              "key": "access_key_id",
+                                              "name": "data-s3"
+                                          }
+                                      }
+                                  },
+                                  {
+                                      "name": "BUCKET",
+                                      "valueFrom": {
+                                          "secretKeyRef": {
+                                              "key": "bucket_name",
+                                              "name": "data-s3"
+                                          }
+                                      }
+                                  },
+                                  {
+                                      "name": "AWS_SECRET_ACCESS_KEY",
+                                      "valueFrom": {
+                                          "secretKeyRef": {
+                                              "key": "secret_access_key",
+                                              "name": "data-s3"
+                                          }
+                                      }
+                                  }
+                              ],
+                              "image": "docker.digital.homeoffice.gov.uk/library/awscli:1.16.19",
+                              "imagePullPolicy": "Always",
+                              "name": "upload",
+                              "resources": {
+                                  "limits": {
+                                      "cpu": "1",
+                                      "memory": "16Gi"
+                                  },
+                                  "requests": {
+                                      "cpu": "1",
+                                      "memory": "16Gi"
+                                  }
+                              },
+                              "securityContext": {
+                                  "runAsNonRoot": true
+                              },
+                              "terminationMessagePath": "/dev/termination-log",
+                              "terminationMessagePolicy": "File",
+                              "volumeMounts": [
+                                  {
+                                      "mountPath": "/data",
+                                      "name": "ingest-data-elasticsearch"
+                                  }
+                              ]
+                          }
+                      ],
+                      "nodeSelector": {
+                          "role": "dacc-entitysearch-m16x"
+                      },
+                      "restartPolicy": "OnFailure",
+                      "schedulerName": "default-scheduler",
+                      "securityContext": {
+                          "fsGroup": 1000,
+                          "runAsUser": 1000
+                      },
+                      "terminationGracePeriodSeconds": 30,
+                      "tolerations": [
+                          {
+                              "effect": "NoSchedule",
+                              "key": "dedicated",
+                              "operator": "Equal",
+                              "value": "dacc-entitysearch-m16x"
+                          }
+                      ],
+                      "volumes": [
+                          {
+                              "name": "ingest-data-elasticsearch",
+                              "persistentVolumeClaim": {
+                                  "claimName": "ingest-data-elasticsearch"
+                              }
+                          }
+                      ]
+                  }
+              }
+          },
+          "status": {
+              "completionTime": "2018-09-25T14:26:21Z",
+              "conditions": [
+                  {
+                      "lastProbeTime": "2018-09-25T14:26:21Z",
+                      "lastTransitionTime": "2018-09-25T14:26:21Z",
+                      "status": "True",
+                      "type": "Complete"
+                  }
+              ],
+              "startTime": "2018-09-25T14:21:52Z",
+              "succeeded": 1
+          }
+      }
+  ],
+  "kind": "List",
+  "metadata": {
+      "resourceVersion": "",
+      "selfLink": ""
+  }
+}

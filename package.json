@@ -5,8 +5,8 @@
   "main": "index.js",
   "scripts": {
     "start": "node index",
-    "test": "KUBE_SERVICE_ACCOUNT_TOKEN=MOCK_TOKEN jest --coverage __tests__",
-    "test-watch": "KUBE_SERVICE_ACCOUNT_TOKEN=MOCK_TOKEN jest --watch __tests__",
+    "test": "KUBE_SERVICE_ACCOUNT_TOKEN=MOCK_TOKEN ROLE=mockRole jest --coverage __tests__",
+    "test-watch": "KUBE_SERVICE_ACCOUNT_TOKEN=MOCK_TOKEN ROLE=mockRole jest --watch __tests__",
     "precommit": "pretty-quick --staged"
   },
   "author": "dacc@ukhomeoffice",
@@ -16,8 +16,6 @@
     "bluebird": "^3.5.1",
     "mongodb": "^3.1.1",
     "ramda": "^0.25.0",
-    "request": "^2.88.0",
-    "request-promise": "^4.2.2",
     "sqs-consumer": "^3.8.0"
   },
   "devDependencies": {
