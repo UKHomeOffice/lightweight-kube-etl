@@ -4,7 +4,7 @@ const {
 } = require('../src/ingestor');
 
 const sample_s3_no_ts_folders = {
-  Content: [
+  Contents: [
     {
       Key: 'pending/.DS_Store'
     },
@@ -15,7 +15,7 @@ const sample_s3_no_ts_folders = {
 };
 
 const sample_s3_ts_folders = {
-  Content: [
+  Contents: [
     {
       Key: 'pending/.DS_Store'
     },
