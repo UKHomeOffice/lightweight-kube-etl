@@ -6,7 +6,6 @@ const {
   S3_ACCESS_KEY,
   S3_SECRET_KEY,
   REGION,
-  MONGO_CONN,
   KUBE_SERVICE_ACCOUNT_TOKEN
 } = process.env;
 
@@ -16,6 +15,4 @@ const s3_client = new AWS.S3({
   region: REGION
 });
 
-const kube_base_cmd = `kubectl --token ${KUBE_SERVICE_ACCOUNT_TOKEN} `;
-
-start(s3_client, kube_base_cmd);
+start(s3_client);
