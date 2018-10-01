@@ -23,21 +23,21 @@ const getIngestJobParams = R.compose(
   R.prop('Contents')
 );
 
-function control_loop (s3, mongodb, kubectl) {
+function start (s3, kubectl) {
   s3.listObjectsV2({Bucket, Prefix: "pending/", Delimiter: ""}, (err, folder) => {
-    console.log(folder);
+
     if (err) {
       console.error(JSON.stringify(err, null, 2));
       
-      return setTimeout(control_loop, pollingInterval);
+      return setTimeout(start, pollingInterval);
 
     } else if (!folder || !folder.Contents.length) {
       
-      return setTimeout(control_loop, pollingInterval);
+      return setTimeout(start, pollingInterval);
 
     } else if (!hasTimestampFolders(folder)) {
       
-      return setTimeout(control_loop, pollingInterval);
+      return setTimeout(start, pollingInterval);
 
     } else {
       const ingestParams = getIngestJobParams(folder);
@@ -59,11 +59,14 @@ function waitForManifest (s3, ingestParams, kubectl) {
 };
 
 function triggerIngest (ingestParams, kubectl) {
-  console.log('go ====== ', ingestParams, kubectl);
+  const {ingestType, ingestName} = ingestParams;
+
+
+  console.log({ingestType, ingestName});
 }
 
 module.exports = {
-  control_loop,
+  start,
   hasTimestampFolders,
   getIngestJobParams
 };
