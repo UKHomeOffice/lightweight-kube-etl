@@ -32,9 +32,26 @@ function control_loop (s3, mongodb, kubectl) {
       setTimeout(control_loop, pollingInterval);
     } else {
       const ingestParams = getIngestJobParams(folder);
+
+      waitForManifest(s3, ingestParams, kubectl)
     }
   });
 };
+
+function waitForManifest (s3, ingestParams, kubectl) {
+  const { ingestName } = ingestParams;
+  const manifestPrefix = `pending/${ingestName}/manifest.json`;
+
+  s3.listObjectsV2({Prefix: manifestPrefix, Delimiter: ""}, (err, {Contents}) => {
+    return !Contents.length
+      ? setTimeout(() => waitForManifest(s3, ingestParams, kubectl), pollingInterval)
+      : triggerIngest(ingestParams, kubectl);
+  });
+};
+
+function triggerIngest (ingestParams, kubectl) {
+  console.log('go ====== ', ingestParams, kubectl);
+}
 
 module.exports = {
   control_loop,
