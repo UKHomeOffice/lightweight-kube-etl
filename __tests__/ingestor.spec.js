@@ -35,6 +35,9 @@ const sample_s3_ts_folders = {
     },
     {
       Key: 'pending/1538055250/person/person_headers.csv.gz'
+    },
+    {
+      Key: 'pending/1538055250/person/person_sample.csv.gz'
     }
   ]
 }
@@ -82,16 +85,19 @@ describe('The Entity Search Ingestor', () => {
 
   it('can get all the files and folders for an ingest', () => {
     const ingest = [
-      {Key: 'pending/1538055240'},
-      {Key: 'pending/1538055240/manifest.json'},
-      {Key: 'pending/1538055240/person/person_headers.csv.gz'}
+      {Key: 'pending/1538055250/manifest.json'},
+      {Key: 'pending/1538055250'},
+      {Key: 'pending/1538055250/person/person_headers.csv.gz'},
+      {Key: 'pending/1538055250/person/person_sample.csv.gz'}
     ];
 
     const params = {
       ingestType: 'bulk',
-      ingestName: '1538055240'
+      ingestName: '1538055250'
     }
 
-    expect(getIngestFiles(params)(sample_s3_ts_folders)).toEqual(ingest);
+    const files = getIngestFiles(params)(sample_s3_ts_folders);
+
+    expect(files).toEqual(ingest);
   })
 });

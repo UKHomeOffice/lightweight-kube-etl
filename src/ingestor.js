@@ -1,15 +1,30 @@
 const R = require('ramda');
 const moment = require('moment');
-const pollingInterval = process.env.NODE_ENV === 'test' ? 1000 : 1000 * 60;
-// pollingInterval in tests 1 second in prod 1 minuet
-const { BUCKET: Bucket, KUBE_SERVICE_ACCOUNT_TOKEN } = process.env;
-const { Readable } = require('stream');
+const AWS = require("aws-sdk");
 const { spawn, exec } = require('child_process');
+const { insert: mongoClient } = require("./mongodb");
+
+const { 
+  BUCKET: Bucket, 
+  KUBE_SERVICE_ACCOUNT_TOKEN,
+  S3_ACCESS_KEY,
+  S3_SECRET_KEY,
+  REGION,
+  NODE_ENV = 'production'
+} = process.env;
+
+const s3 = new AWS.S3({
+  accessKeyId: S3_ACCESS_KEY,
+  secretAccessKey: S3_SECRET_KEY,
+  region: REGION
+});
+
+const pollingInterval = NODE_ENV === 'test' ? 1000 : 1000 * 60;
 
 const isTimestamp = label => moment.unix(label).isValid();
 
 const baseArgs = [
-  '--context', 'acp-notprod_DACC',
+  // '--context', 'acp-notprod_DACC',
   '-n', 'dacc-entitysearch',
   '--token', KUBE_SERVICE_ACCOUNT_TOKEN
 ]
@@ -52,11 +67,29 @@ const getStatus = R.pathOr(false, ['status', 'succeeded']);
 
 const getIngestFiles = ({ingestName}) => R.compose(
   R.concat([{Key: `pending/${ingestName}/manifest.json`}, {Key: `pending/${ingestName}`}]),
-  R.map(R.pick('Key')),
+  R.filter(R.compose(R.contains(ingestName), R.split('/'), R.prop('Key'))),
+  R.map(R.pick(['Key'])),
   R.prop('Contents')
 );
 
+const getJobDuration = (start, end) => {
+  const seconds = end.diff(start, 'seconds');
+  const hours = Math.floor(seconds / 3600) % 24;
+  const minutes = Math.floor(seconds / 60) % 60;
+  return `${hours}:${minutes}`;
+}
+
 let neoStartTime, neoEndTime, elasticStartTime, elasticEndTime, ingestFiles;
+
+/*
+..######..########....###....########..########
+.##....##....##......##.##...##.....##....##...
+.##..........##.....##...##..##.....##....##...
+..######.....##....##.....##.########.....##...
+.......##....##....#########.##...##......##...
+.##....##....##....##.....##.##....##.....##...
+..######.....##....##.....##.##.....##....##...
+*/
 
 function start (s3) {
   s3.listObjectsV2({Bucket, Prefix: "pending/", Delimiter: ""}, (err, folder) => {
@@ -78,21 +111,13 @@ function start (s3) {
       const ingestParams = getIngestJobParams(folder);
       
       ingestFiles = getIngestFiles(ingestParams)(folder);
+      
+      console.log(`new ${ingestParams.ingestType} ingest detected in folder ${ingestParams.ingestName}  - waiting for manifest file...`)
 
       waitForManifest(s3, ingestParams)
     }
   });
 };
-
-function finish () {
-  const complete = moment(neoEndTime).isValid() && moment(elasticEndTime).isValid();
-
-  if (!complete) {
-    setTimeout(finish, pollingInterval);
-  } else {
-    ingestFiles;
-  }
-}
 
 function waitForManifest (s3, ingestParams) {
   
@@ -102,11 +127,11 @@ function waitForManifest (s3, ingestParams) {
   s3.listObjectsV2({Bucket, Prefix: manifestPrefix, Delimiter: ""}, (err, {Contents}) => {
     return !Contents.length
       ? setTimeout(() => waitForManifest(s3, ingestParams), pollingInterval)
-      : triggerIngest(ingestParams);
+      : deleteOldJobs(ingestParams);
   });
 };
 
-function triggerIngest (ingestParams) {
+function deleteOldJobs (ingestParams) {
 
   const {ingestType, ingestName} = ingestParams;
   const forIngestType = ingestType === 'incremental' ? new RegExp(/-delta-/) : new RegExp(/-bulk-/);
@@ -132,16 +157,78 @@ function spawnIngestJobs ({ingestType, ingestName}, jobsToDelete) {
 
   const deleteElastic = spawn('kubectl', R.concat(baseArgs, ['delete', 'jobs', currentElasticJob]), {env: process.env});
   deleteNeo.on('exit', () => startElasticIngest(nextNeoJob, cronjobType));
+  
+  waitForCompletion({ingestType, ingestName});
 }
 
 /*
-.##....##.########..#######.....####.##....##..######...########..######..########
-.###...##.##.......##.....##.....##..###...##.##....##..##.......##....##....##...
-.####..##.##.......##.....##.....##..####..##.##........##.......##..........##...
-.##.##.##.######...##.....##.....##..##.##.##.##...####.######....######.....##...
-.##..####.##.......##.....##.....##..##..####.##....##..##.............##....##...
-.##...###.##.......##.....##.....##..##...###.##....##..##.......##....##....##...
-.##....##.########..#######.....####.##....##..######...########..######.....##...
+.########.####.##....##.####..######..##.....##
+.##........##..###...##..##..##....##.##.....##
+.##........##..####..##..##..##.......##.....##
+.######....##..##.##.##..##...######..#########
+.##........##..##..####..##........##.##.....##
+.##........##..##...###..##..##....##.##.....##
+.##.......####.##....##.####..######..##.....##
+*/
+
+function waitForCompletion ({ingestType, ingestName}) {
+  const complete = moment(neoEndTime).isValid() && moment(elasticEndTime).isValid();
+
+  if (!complete) {
+    setTimeout(() => waitForCompletion({ingestType, ingestName}), pollingInterval);
+  } else {
+    const deleteParams = {
+      Bucket,
+      Delete: {
+        Objects: ingestFiles,
+        Quiet: true
+      }
+    }
+
+    s3.deleteObjects(deleteParams, err => {
+      const ts = moment(new Date()).format('MMM Do hh:mm');
+     
+      if (err) {
+        console.error(`${ts}: ${JSON.stringify(err, null, 2)}`);
+        enterErrorState();
+      } else {
+        
+        const store_ingest_details = {
+          ingest: ingestName,
+          loadDate: Date.now(),
+          neo_job_duration: getJobDuration(neoStartTime, neoEndTime),
+          elastic_job_duration: getJobDuration(elasticStartTime, elasticEndTime),
+          total_job_duration: getJobDuration(neoStartTime, ts)
+        }
+        
+        console.log(`${ts}: ${JSON.stringify(store_ingest_details, null, 4)}`);
+
+        mongoClient(store_ingest_details).then(process.exit);
+      }
+    })
+  }
+}
+
+function isJobCompleted (jobName, status) {
+  if (status) {
+    R.startsWith('neo4j')(jobName) ? onNeoCompleted(jobName) : onElasticComplete(jobName);
+  } else {
+    exec(`kubectl ${baseArgs.join(' ')} get jobs ${jobName} -o json`, (err, stdout, stderr) => {
+      const status = getStatus(JSON.parse(stdout));
+  
+      setTimeout(() => isJobCompleted(jobName, status), pollingInterval);
+    });
+  }
+}
+
+/*
+.##....##.########..#######..##..............##
+.###...##.##.......##.....##.##....##........##
+.####..##.##.......##.....##.##....##........##
+.##.##.##.######...##.....##.##....##........##
+.##..####.##.......##.....##.#########.##....##
+.##...###.##.......##.....##.......##..##....##
+.##....##.########..#######........##...######.
 */
 
 function startNeoIngest (nextNeoJob, cronjobType) {
@@ -172,13 +259,13 @@ function onNeoCompleted (jobName) {
 }
 
 /*
-.########.##..........###.....######..########.####..######.....####.##....##..######...########..######..########
-.##.......##.........##.##...##....##....##.....##..##....##.....##..###...##.##....##..##.......##....##....##...
-.##.......##........##...##..##..........##.....##..##...........##..####..##.##........##.......##..........##...
-.######...##.......##.....##..######.....##.....##..##...........##..##.##.##.##...####.######....######.....##...
-.##.......##.......#########.......##....##.....##..##...........##..##..####.##....##..##.............##....##...
-.##.......##.......##.....##.##....##....##.....##..##....##.....##..##...###.##....##..##.......##....##....##...
-.########.########.##.....##..######.....##....####..######.....####.##....##..######...########..######.....##...
+.########.##..........###.....######..########.####..######.
+.##.......##.........##.##...##....##....##.....##..##....##
+.##.......##........##...##..##..........##.....##..##......
+.######...##.......##.....##..######.....##.....##..##......
+.##.......##.......#########.......##....##.....##..##......
+.##.......##.......##.....##.##....##....##.....##..##....##
+.########.########.##.....##..######.....##....####..######.
 */
 
 function startElasticIngest (nextElasticJob, cronjobType) {
@@ -206,18 +293,6 @@ function onElasticComplete (jobName) {
   const jobDuration = `${elasticEndTime.diff(elasticStartTime, 'hours')}h ${elasticEndTime.diff(elasticStartTime, 'minutes')}mins`;
 
   console.log(`${elasticEndTime.format('MMM Do hh:mm')}: completed elastic ingest ${jobName}`);  
-}
-
-function isJobCompleted (jobName, status) {
-  if (status) {
-    R.startsWith('neo4j')(jobName) ? onNeoCompleted(jobName) : onElasticComplete(jobName);
-  } else {
-    exec(`kubectl ${baseArgs.join(' ')} get jobs ${jobName} -o json`, (err, stdout, stderr) => {
-      const status = getStatus(JSON.parse(stdout));
-  
-      setTimeout(() => isJobCompleted(jobName, status), pollingInterval);
-    });
-  }
 }
 
 function enterErrorState () {
