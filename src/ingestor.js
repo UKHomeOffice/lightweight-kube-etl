@@ -23,7 +23,7 @@ let neoStartTime, neoEndTime = null, elasticStartTime, elasticEndTime = null, in
 
 const pollingInterval = NODE_ENV === 'test' ? 1000 : 1000 * 60;
 
-const isTimestamp = label => moment.unix(label).isValid();
+const isTimestamp = label => !!(label && moment.unix(label).isValid());
 
 let baseArgs = ['--token', KUBE_SERVICE_ACCOUNT_TOKEN];
 
@@ -113,19 +113,19 @@ function start () {
       
       console.log(`new ${ingestParams.ingestType} ingest detected in folder ${ingestParams.ingestName}  - waiting for manifest file...`)
 
-      waitForManifest(s3, ingestParams)
+      waitForManifest(ingestParams)
     }
   });
 };
 
-function waitForManifest (s3, ingestParams) {
+function waitForManifest (ingestParams) {
   
   const { ingestName } = ingestParams;
   const manifestPrefix = `pending/${ingestName}/manifest.json`;
 
   s3.listObjectsV2({Bucket, Prefix: manifestPrefix, Delimiter: ""}, (err, {Contents}) => {
     return !Contents.length
-      ? setTimeout(() => waitForManifest(s3, ingestParams), pollingInterval)
+      ? setTimeout(() => waitForManifest(ingestParams), pollingInterval)
       : deleteOldJobs(ingestParams);
   });
 };
@@ -311,10 +311,21 @@ function isJobCompleted (jobName, status) {
 }
 
 module.exports = {
-  start,
+  isTimestamp,
   hasTimestampFolders,
   getIngestJobParams,
+  getJobLabels,
+  filterJobs,
   getStatus,
   getIngestFiles,
-  getJobDuration
+  getJobDuration,
+  start,
+  waitForManifest,
+  deleteOldJobs,
+  spawnIngestJobs,
+  startNeoIngest,
+  startElasticIngest,
+  onElasticComplete,
+  waitForCompletion,
+  isJobCompleted,
 };

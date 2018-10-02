@@ -1,12 +1,38 @@
+const ingestor = require('../src/ingestor');
+const childProcess = require("child_process");
+
 const {
+  isTimestamp,
   hasTimestampFolders,
   getIngestJobParams,
+  getJobLabels,
+  filterJobs,
   getStatus,
   getIngestFiles,
-  getJobDuration
-} = require('../src/ingestor');
+  getJobDuration,
+  start,
+  waitForManifest,
+  deleteOldJobs,
+  spawnIngestJobs,
+  startNeoIngest,
+  startElasticIngest,
+  onElasticComplete,
+  waitForCompletion,
+  isJobCompleted,
+} = ingestor;
 
 const m = require('moment');
+
+const s3 = {
+  listObjectsV2: jest.fn().mockImplementation((params, cb) => {
+    return cb(null, sample_s3_ts_folders);
+  })
+};
+
+childProcess.exec = jest.fn().mockImplementation((command, callback) => {
+
+  return callback(null, "exec success", null);
+});
 
 const sample_s3_no_ts_folders = {
   Contents: [
@@ -68,8 +94,17 @@ const sample_running_job = {
   }
 }
 
-describe('The Entity Search Ingestor', () => {
-  it('ingests timestamped folders from s3', () => {
+describe('Simple Ingestor Helper Functions', () => {
+  it('can tell if something is a timestamp', () => {
+    const ts = 1538055250;
+
+    expect(isTimestamp(ts)).toBe(true);
+    expect(isTimestamp(null)).toBe(false);
+    expect(isTimestamp('str')).toBe(false);
+    expect(isTimestamp('1538055250')).toBe(true);
+  });
+  
+  it('can filter timestamped folders from s3', () => {
     expect(hasTimestampFolders(sample_s3_no_ts_folders)).toBe(false);
     expect(hasTimestampFolders(sample_s3_ts_folders)).toBe(true);
   });
@@ -79,6 +114,47 @@ describe('The Entity Search Ingestor', () => {
 
     expect(ingestType).toBe('bulk');
     expect(ingestName).toBe('1538055240');
+  });
+
+  it('extracts job labels from kubectl responses', () => {
+    const result = {
+      items: [
+        {
+          metadata: {
+            name: 'neo4j-bulk-123456'
+          }
+        },
+        {
+          metadata: {
+            name: 'neo4j-delta-123456'
+          }
+        },
+        {
+          metadata: {
+            name: 'elastic-bulk-123456'
+          }
+        },
+        {
+          metadata: {
+            name: 'elastic-delta-123456'
+          }
+        }
+      ]
+    };
+
+    const filterThis = {
+      metadata: {
+        name: 'download-job'
+      }
+    }
+
+    const type = new RegExp(/-delta-/);
+
+    const label = getJobLabels(type)(result);
+
+    expect(label).toEqual(['neo4j-delta-123456', 'elastic-delta-123456']);
+    expect(filterJobs(filterThis)).toBe(false);
+    expect(filterJobs(result.items[0])).toBe(true);
   });
 
   it('can get the status of a job', () => {
@@ -107,7 +183,10 @@ describe('The Entity Search Ingestor', () => {
   it('should be able to get a job duration', () => {
     const start = m('1970-01-01T13:00:00');
     const end = m('1970-01-01T14:30:00');
+    const s_zero_pad = m('1970-01-01T13:00:00');
+    const e_zero_pad = m('1970-01-01T14:09:00');
 
     expect(getJobDuration(start, end)).toBe('1h:30mins');
-  })
+    expect(getJobDuration(s_zero_pad, e_zero_pad)).toBe('1h:09mins');
+  });
 });

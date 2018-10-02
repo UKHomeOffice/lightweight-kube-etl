@@ -32,5 +32,13 @@
   },
   "engines": {
     "node": ">=10.6.0"
+  },
+  "jest": {
+    "testURL": "http://localhost/",
+    "rootDir": ".",
+    "coveragePathIgnorePatterns": [
+      "<rootDir>/src/mongodb.js",
+      "<rootDir>/src/etl_hero.js"
+    ]
   }
 }
