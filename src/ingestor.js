@@ -25,11 +25,11 @@ const pollingInterval = NODE_ENV === 'test' ? 1000 : 1000 * 60;
 
 const isTimestamp = label => moment.unix(label).isValid();
 
-const baseArgs = [
-  '--context', 'acp-notprod_DACC',
-  '-n', 'dacc-entitysearch',
-  '--token', KUBE_SERVICE_ACCOUNT_TOKEN
-]
+let baseArgs = ['--token', KUBE_SERVICE_ACCOUNT_TOKEN];
+
+if (NODE_ENV === 'test') {
+  baseArgs = R.concat(['--context', 'acp-notprod_DACC', '-n', 'dacc-entitysearch'], baseArgs);
+}
 
 const hasTimestampFolders = R.compose(
   R.any(isTimestamp),
@@ -65,7 +65,6 @@ const filterJobs = R.compose(
 );
 
 const getStatus = R.pathOr(false, ['status', 'succeeded']);
-
 
 const getIngestFiles = ({ingestName}) => R.compose(
   R.concat([{Key: `pending/${ingestName}/manifest.json`}, {Key: `pending/${ingestName}`}]),
@@ -152,19 +151,19 @@ function deleteOldJobs (ingestParams) {
 }
 
 function spawnIngestJobs ({ingestType, ingestName}, jobsToDelete) {
-  const currentNeoJob = R.pipe(R.filter( R.startsWith(`neo4j-${ingestType}`)), R.head)(jobsToDelete);
-  const currentElasticJob = R.pipe(R.filter( R.startsWith(`elastic-${ingestType}`)), R.head)(jobsToDelete);
-  const nextNeoJob = `neo4j-${ingestType}-${ingestName}`;
-  const nextElasticJob = `elastic-${ingestType}-${ingestName}`;
-  const cronjobType = ingestType === 'incremental' ? 'delta' : 'bulk'
+  const type = ingestType === 'incremental' ? 'delta' : ingestType;
+  const currentNeoJob = R.pipe(R.filter( R.startsWith(`neo4j-${type}`)), R.head)(jobsToDelete);
+  const currentElasticJob = R.pipe(R.filter( R.startsWith(`elastic-${type}`)), R.head)(jobsToDelete);
+  const nextNeoJob = `neo4j-${type}-${ingestName}`;
+  const nextElasticJob = `elastic-${type}-${ingestName}`;
 
   const deleteNeo = spawn('kubectl', R.concat(baseArgs, ['delete', 'jobs', currentNeoJob]), {env: process.env});
   
-  deleteNeo.on('exit', () => startNeoIngest(nextNeoJob, cronjobType));
+  deleteNeo.on('exit', () => startNeoIngest(nextNeoJob, type));
 
   const deleteElastic = spawn('kubectl', R.concat(baseArgs, ['delete', 'jobs', currentElasticJob]), {env: process.env});
   
-  deleteNeo.on('exit', () => startElasticIngest(nextElasticJob, cronjobType));
+  deleteNeo.on('exit', () => startElasticIngest(nextElasticJob, type));
   
   waitForCompletion({ingestType, ingestName});
 }
@@ -202,9 +201,9 @@ function startNeoIngest (nextNeoJob, cronjobType) {
 function onNeoCompleted (jobName) {
   neoEndTime = moment(new Date);
 
-  const jobDuration = `${neoEndTime.diff(neoStartTime, 'hours')}h ${neoEndTime.diff(neoStartTime, 'minutes')}mins`;
+  const jobDuration = getJobDuration(neoStartTime, neoEndTime);
 
-  console.log(`${neoEndTime.format('MMM Do hh:mm')}: completed ${jobName}`);
+  console.log(`${neoEndTime.format('MMM Do hh:mm')}: completed ${jobName} in ${jobDuration}`);
 }
 
 /*
@@ -240,9 +239,9 @@ function startElasticIngest (nextElasticJob, cronjobType) {
 function onElasticComplete (jobName) {
   elasticEndTime = moment(new Date);
 
-  const jobDuration = `${elasticEndTime.diff(elasticStartTime, 'hours')}h ${elasticEndTime.diff(elasticStartTime, 'minutes')}mins`;
+  const jobDuration = getJobDuration(elasticStartTime, elasticEndTime);
 
-  console.log(`${elasticEndTime.format('MMM Do hh:mm')}: completed ${jobName}`);  
+  console.log(`${elasticEndTime.format('MMM Do hh:mm')}: completed ${jobName} in ${jobDuration}`);  
 }
 
 function enterErrorState () {
