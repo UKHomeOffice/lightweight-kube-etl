@@ -77,7 +77,7 @@ const getJobDuration = (start, end) => {
   const seconds = end.diff(start, 'seconds');
   const hours = Math.floor(seconds / 3600) % 24;
   const minutes = Math.floor(seconds / 60) % 60;
-  return `${hours}:${minutes}`;
+  return `${hours}h:${minutes < 10 ? `0${minutes}` : minutes}mins`;
 }
 
 /*
@@ -91,9 +91,6 @@ const getJobDuration = (start, end) => {
 */
 
 function start () {
-  console.log(require('./elt_hero'));
-  console.log('\nversion: ', require('../package.json').version, '\n');
-
   s3.listObjectsV2({Bucket, Prefix: "pending/", Delimiter: ""}, (err, folder) => {
 
     if (err) {

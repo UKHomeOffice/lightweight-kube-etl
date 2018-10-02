@@ -108,6 +108,6 @@ describe('The Entity Search Ingestor', () => {
     const start = m('1970-01-01T13:00:00');
     const end = m('1970-01-01T14:30:00');
 
-    expect(getJobDuration(start, end)).toBe('1:30');
+    expect(getJobDuration(start, end)).toBe('1h:30mins');
   })
 });
