@@ -1,11 +1,18 @@
-# SNS subscriber that runs Kubernetes job
+.##....##.##.....##.########..########.........########.########.##......
+.##...##..##.....##.##.....##.##...............##..........##....##......
+.##..##...##.....##.##.....##.##...............##..........##....##......
+.#####....##.....##.########..######...#######.######......##....##......
+.##..##...##.....##.##.....##.##...............##..........##....##......
+.##...##..##.....##.##.....##.##...............##..........##....##......
+.##....##..#######..########..########.........########....##....########
 
 Lightweight ETL in Kubernetes + AWS
 
 This is designed to run in the cluster and use a service account.
-It subscribes to a SQS queue which you should make your S3 bucket point at on writes.
 
-If something enters the queue, this will pull the manifest.json of the bucket and see if the files in the manifest match that in the bucket by comparing the `SHA256`s.
+The script will keep looking inside an s3 bucket for timestamped folders in a folder named `pending`.
+
+It will take the oldest folder and que it up for ingestion. When the manifest file is present then a Job will be started.
 
 If it's a match, then it will start your Kubernetes job.
 
