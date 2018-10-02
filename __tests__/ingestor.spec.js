@@ -2,8 +2,11 @@ const {
   hasTimestampFolders,
   getIngestJobParams,
   getStatus,
-  getIngestFiles
+  getIngestFiles,
+  getJobDuration
 } = require('../src/ingestor');
+
+const m = require('moment');
 
 const sample_s3_no_ts_folders = {
   Contents: [
@@ -99,5 +102,12 @@ describe('The Entity Search Ingestor', () => {
     const files = getIngestFiles(params)(sample_s3_ts_folders);
 
     expect(files).toEqual(ingest);
+  });
+
+  it('should be able to get a job duration', () => {
+    const start = m('1970-01-01T13:00:00');
+    const end = m('1970-01-01T14:30:00');
+
+    expect(getJobDuration(start, end)).toBe('1:30');
   })
 });
