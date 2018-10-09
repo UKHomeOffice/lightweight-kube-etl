@@ -12,6 +12,7 @@
   "author": "dacc@ukhomeoffice",
   "license": "MIT",
   "dependencies": {
+    "async": "^2.6.1",
     "aws-sdk": "^2.224.1",
     "bluebird": "^3.5.2",
     "moment": "^2.22.2",
