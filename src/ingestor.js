@@ -115,17 +115,6 @@ const getPodStatus = R.compose(
   R.pathOr([], ['status', 'containerStatuses'])
 )
 
-const handleError = (jobName, instance) => (code, sig) => {
-  const ts = moment(new Date());
-  if (code !== 0) {
-    console.error(`${ts.format('MMM Do HH:mm')}: ERROR ${jobName} terminated ${sig || 'with no signal'} code ${code}`);
-    enterErrorState();
-  } else {
-    console.log(`${ts.format('MMM Do HH:mm')}: ${jobName} job started ${code}k`);
-    instance.jobCompletedAt(ts);
-  }    
-}
-
 /*
 ..######..########....###....########..########
 .##....##....##......##.##...##.....##....##...
@@ -199,7 +188,7 @@ function deleteOldJobs ({ingestType, ingestName}, jobsToDelete) {
   const currentNeoJob = R.pipe(R.filter( R.startsWith(`neo4j-${jobType}`)), R.head)(jobsToDelete);
   const currentElasticJob = R.pipe(R.filter( R.startsWith(`elastic-${jobType}`)), R.head)(jobsToDelete);
   
-  console.log(`${moment(new Date()).format('MMM Do HH:mm')}: deleteing jobs ${currentNeoJob} & ${currentElasticJob}`);
+  console.log(`${moment(new Date()).format('MMM Do HH:mm')}: delete jobs ${currentNeoJob} & ${currentElasticJob}`);
 
   const deleteJobs = spawn('kubectl', R.concat(baseArgs, ['delete', 'jobs', currentNeoJob, currentElasticJob]));  
   
