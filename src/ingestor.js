@@ -243,6 +243,10 @@ class WaitForJob extends EventEmitter {
     const self = this;
     
     exec(`kubectl ${R.join(' ', baseArgs)} get pods ${self.pod0} -o json`, (err, stdout, stderr) => {
+      if (err || stderr) {
+        return setTimeout(() => self._poll_pod0(), pollingInterval);
+      }
+
       const startTime = self.db === 'neo4j' ? neoStartTime : elasticStartTime;
       const ready = getPodStatus(JSON.parse(stdout), startTime);
       
@@ -254,6 +258,10 @@ class WaitForJob extends EventEmitter {
     const self = this;
     
     exec(`kubectl ${R.join(' ', baseArgs)} get pods ${self.pod1} -o json`, (err, stdout, stderr) => {
+      if (err || stderr) {
+        return setTimeout(() => self._poll_pod1(), pollingInterval);
+      }
+
       const startTime = self.db === 'neo4j' ? neoStartTime : elasticStartTime;
       const ready = getPodStatus(JSON.parse(stdout), startTime);
       
