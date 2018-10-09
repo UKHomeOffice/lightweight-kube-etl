@@ -27,8 +27,8 @@ basically executes these 10 steps:
 
 const R = require('ramda');
 const moment = require('moment');
+const async = require('async');
 const AWS = require("aws-sdk");
-const EventEmitter = require('events');
 const { spawn, exec } = require('child_process');
 const { insert: mongoClient } = require("./mongodb");
 
@@ -108,19 +108,23 @@ const getJobDuration = (start, end) => {
   return `${hours}h:${minutes < 10 ? `0${minutes}` : minutes}mins`;
 }
 
-const getPodStatus = (podStatus, startTime) => {
-  const [ready, state] = R.compose(
-    R.props(['ready', 'state']),
-    R.head,
-    R.filter(R.propEq('name', 'build')),
-    R.pathOr([], ['status', 'containerStatuses'])
-  )(podStatus);
+const getPodStatus = R.compose(
+  R.prop('ready'),
+  R.head,
+  R.filter(R.propEq('name', 'build')),
+  R.pathOr([], ['status', 'containerStatuses'])
+)
 
-  const startedAt = R.pathOr(null, ['running', 'startedAt'])(state);
-  
-  return ready && startedAt && moment(startedAt).isAfter(startTime);
+const handleError = (jobName, instance) => (code, sig) => {
+  const ts = moment(new Date());
+  if (code !== 0) {
+    console.error(`${ts.format('MMM Do HH:mm')}: ERROR ${jobName} terminated ${sig || 'with no signal'} code ${code}`);
+    enterErrorState();
+  } else {
+    console.log(`${ts.format('MMM Do HH:mm')}: ${jobName} job started ${code}k`);
+    instance.jobCompletedAt(ts);
+  }    
 }
-
 
 /*
 ..######..########....###....########..########
@@ -199,20 +203,24 @@ function deleteOldJobs ({ingestType, ingestName}, jobsToDelete) {
   
   const jobs = [
     {
-      db: 'neo4j',
+      db: 'elastic',
       name: `elastic-${jobType}-${ingestName}`,
       cronJobName: `elastic-${jobType}`,
       pods: ['elasticsearch-0', 'elasticsearch-1']
     },
     {
-      db: 'elastic',
+      db: 'neo4j',
       name: `neo4j-${jobType}-${ingestName}`,
       cronJobName: `neo4j-${jobType}`,
       pods: ['neo4j-0', 'neo4j-1']
     }
   ];
   
-  deleteJobs.on('exit', () => createNewJobs({ingestType, ingestName}, jobs));
+  deleteJobs.on('exit', () => {
+    jobType === 'bulk'
+    ? createBulkJobs({ingestType, ingestName}, jobs)
+    : createDeltaJobs({ingestType, ingestName}, jobs);
+  });
 }
 
 /*
@@ -225,93 +233,145 @@ function deleteOldJobs ({ingestType, ingestName}, jobsToDelete) {
 ..######...#######..########...######.
 */
 
-class WaitForJob extends EventEmitter {
-  constructor(job) {
-    super();
-
-    this.db = job.db;
-    this.pod0 = job.pods[0];
-    this.pod1 = job.pods[1];
-    this.pod0_ready = false;
-    this.pod1_ready = false;
-    this._poll_pod0();
-    this._poll_pod1();
-    this._hasFinished();
-  }
-
-  _poll_pod0 () {
-    const self = this;
+function checkPodStatus (podName, podReady) {
+  const poll = () => getPodStatus(pod, podReady)
+  exec(`kubectl ${R.join(' ', baseArgs)} get pods ${podName} -o json`, (err, stdout, stderr) => {
     
-    exec(`kubectl ${R.join(' ', baseArgs)} get pods ${self.pod0} -o json`, (err, stdout, stderr) => {
-      if (err || stderr) {
-        return setTimeout(() => self._poll_pod0(), pollingInterval);
-      }
+    if (err || stderr) setTimeout(poll, pollingInterval);
 
-      const startTime = self.db === 'neo4j' ? neoStartTime : elasticStartTime;
-      const ready = getPodStatus(JSON.parse(stdout), startTime);
-      
-      ready ? self.pod0_ready = true : setTimeout(() => self._poll_pod0(), pollingInterval);
-    });
-  }
+    const ready = getPodStatus(JSON.parse(stdout));
 
-  _poll_pod1 () {
-    const self = this;
+    const db = R.startsWith('neo4j', podName) ? 'neo4j' : 'elastic'
     
-    exec(`kubectl ${R.join(' ', baseArgs)} get pods ${self.pod1} -o json`, (err, stdout, stderr) => {
-      if (err || stderr) {
-        return setTimeout(() => self._poll_pod1(), pollingInterval);
-      }
+    ready ? podReady(null, podName) : setTimeout(poll, pollingInterval);
+  });
+}
 
-      const startTime = self.db === 'neo4j' ? neoStartTime : elasticStartTime;
-      const ready = getPodStatus(JSON.parse(stdout), startTime);
+function waitForPods (pods, next) {
+  const checks = R.map(podName => ready => checkPodStatus(podName, ready))(pods);
+  async.parallel(checks, next);
+}
+
+function createBulkJobs (ingestParams, jobs) {
+  const [elastic, neo4j] = jobs;
+
+  waitForCompletion(ingestParams);
+
+  waitForPods(elastic.pods, (err, results) => {
+    console.log('waitForPods', {err, results});
+    if (err) {
+      console.error(err);
+      enterErrorState();
+    } else {
+      elasticStartTime = moment(new Date());
+
+      const args = R.concat(baseArgs, ['create', 'job', elastic.name, '--from', `cronjob/${elastic.cronJobName}`]);
+
+      const elasticJob = spawn('kubectl', args);
       
-      ready ? self.pod1_ready = true : setTimeout(() => self._poll_pod1(), pollingInterval);
-    });
-  }
+      elasticJob.on('exit', (code, sig) => {
+        const ts = moment(new Date());
 
-  _hasFinished () {
-    const self = this;
+        if (code !== 0) {
+          console.error(`${ts.format('MMM Do HH:mm')}: ERROR ${elastic.name} terminated ${sig || 'with no signal'} code ${code}`);
+          enterErrorState();
+        } else {
+          console.log(`${ts.format('MMM Do HH:mm')}: ${elastic.name} triggered ${code}k`);
+          
+          waitForPods(elastic.pods, err => {
+            if (err) {
+              console.error(err);
+              enterErrorState();
+            } else {
+              elasticEndTime = moment(new Date());
+            }
+          })
+        }
+      });
+    }
+  });
 
-    self.pod0_ready && self.pod1_ready
-      ? self.emit('finished')
-      : setTimeout(() => self._hasFinished(), pollingInterval);
-  }
-};
+  waitForPods(neo4j.pods, err => {
+    if (err) {
+      console.error(err);
+      enterErrorState();
+    } else {
+      neo4jStartTime = moment(new Date());
 
-function createNewJobs(ingestParams, jobs) {
+      const args = R.concat(baseArgs, ['create', 'job', neo4j.name, '--from', `cronjob/${neo4j.cronJobName}`]);
+
+      const neo4jJob = spawn('kubectl', args);
+      
+      neo4jJob.on('exit', (code, sig) => {
+        const ts = moment(new Date());
+
+        if (code !== 0) {
+          console.error(`${ts.format('MMM Do HH:mm')}: ERROR ${neo4j.name} terminated ${sig || 'with no signal'} code ${code}`);
+          enterErrorState();
+        } else {
+          console.log(`${ts.format('MMM Do HH:mm')}: ${neo4j.name} triggered ${code}k`);
+          
+          waitForPods(neo4j.pods, err => {
+            if (err) {
+              console.error(err);
+              enterErrorState();
+            } else {
+              neo4jEndTime = moment(new Date());
+            }
+          })
+        }
+      });
+    }
+  });
+}
+
+function createDeltaJobs(ingestParams, jobs) {
   
   if (!jobs.length) return waitForCompletion(ingestParams);
 
   const job = jobs.pop();
 
-  const startTime = moment(new Date());
-
-  job.db === 'neo4j' ? neoStartTime = startTime : elasticStartTime = startTime;
-
-  console.log(`${moment(neoStartTime).format('MMM Do HH:mm')}: starting ${job.name}`);
-
-  const args = R.concat(baseArgs, ['create', 'job', job.name, '--from', `cronjob/${job.cronJobName}`]);
-
-  const handleError = (code, sig) => {
-    if (code !== 0) {
-      console.error(`${moment(new Date).format('MMM Do HH:mm')}: ERROR ${job.name} terminated with signal ${sig}`);
+  waitForPods(job.pods, err => {
+    if (err) {
+      console.error(err);
       enterErrorState();
+    } else {
+      const startTime = moment(new Date());
+
+      job.db === 'neo4j' ? neoStartTime = startTime : elasticStartTime = startTime;
+
+      const args = R.concat(baseArgs, ['create', 'job', job.name, '--from', `cronjob/${job.cronJobName}`]);
+
+      const jobPod = spawn('kubectl', args);
+      
+      jobPod.on('exit', (code, sig) => {
+        const ts = moment(new Date());
+
+        if (code !== 0) {
+          console.error(`${ts.format('MMM Do HH:mm')}: ERROR ${job.name} terminated ${sig || 'with no signal'} code ${code}`);
+          enterErrorState();
+        } else {
+          console.log(`${ts.format('MMM Do HH:mm')}: ${job.name} triggered ${code}k`);
+          
+          waitForPods(job.pods, err => {
+            if (err) {
+              console.error(err);
+              enterErrorState();
+            } else {
+              const endTime = moment(new Date());
+              
+              job.db === 'neo4j' ? neoEndTime = endTime : elasticEndTime = endTime;
+
+              createDeltaJobs(ingestParams, jobs);
+            }
+          });
+        }
+      });
     }
-  }
-  
-  const jobPod = spawn('kubectl', args, {env: process.env});
-  
-  jobPod.on('exit', handleError);
-  jobPod.on('error', handleError);
-
-  waitForJob = new WaitForJob(job);
-  waitForJob.on('finished', () => {
-    const endTime = moment(new Date());
-    job.db === 'neo4j' ? neoEndTime = endTime : elasticEndTime = endTime;
-    createNewJobs(ingestParams, jobs);
   });
-}
 
+
+}
 
 function enterErrorState () {
   setTimeout(enterErrorState, pollingInterval);
@@ -342,10 +402,10 @@ function waitForCompletion ({ingestType, ingestName}) {
     }
 
     s3.deleteObjects(deleteParams, err => {
-      const ts = moment(new Date());
+      const ingestEndTime = moment(new Date());
      
       if (err) {
-        console.error(`${ts.format('MMM Do HH:mm')}: ${JSON.stringify(err, null, 2)}`);
+        console.error(`${ingestEndTime.format('MMM Do HH:mm')}: ${JSON.stringify(err, null, 2)}`);
         enterErrorState();
       } else {
         
@@ -354,10 +414,10 @@ function waitForCompletion ({ingestType, ingestName}) {
           loadDate: Date.now(),
           neo_job_duration: getJobDuration(neoStartTime, neoEndTime),
           elastic_job_duration: getJobDuration(elasticStartTime, elasticEndTime),
-          total_job_duration: getJobDuration(neoStartTime, ts)
+          total_job_duration: getJobDuration(neoStartTime, ingestEndTime)
         }
         
-        console.log(`${ts.format('MMM Do HH:mm')}: ${JSON.stringify(store_ingest_details, null, 4)}`);
+        console.log(`${ingestEndTime.format('MMM Do HH:mm')}: ${JSON.stringify(store_ingest_details, null, 4)}`);
 
         mongoClient(store_ingest_details).then(process.exit);
       }

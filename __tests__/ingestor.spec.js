@@ -254,12 +254,10 @@ describe('Simple Ingestor Helper Functions', () => {
   });
 
   it('should be able to find the status of a pod', () => {
-    const pod_ready = getPodStatus(sample_pod_status_ready, moment('2018-10-10T10:01:00Z'));
-    const pod_not_ready = getPodStatus(sample_pod_status_not_ready, moment('2018-10-10T10:10:00Z'));
-    const pod_false_ready =  getPodStatus(sample_pod_not_ready, moment('2018-10-10T10:01:00Z'));
+    const pod_ready = getPodStatus(sample_pod_status_ready);
+    const pod_false_ready =  getPodStatus(sample_pod_not_ready);
 
     expect(pod_ready).toBe(true);
-    expect(pod_not_ready).toBe(false);
     expect(pod_false_ready).toBe(false);
   });
 });
