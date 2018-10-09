@@ -196,21 +196,20 @@ function deleteOldJobs ({ingestType, ingestName}, jobsToDelete) {
   
   const jobs = [
     {
-      db: 'elastic',
-      name: `elastic-${jobType}-${ingestName}`,
-      cronJobName: `elastic-${jobType}`,
-      pods: ['elasticsearch-0', 'elasticsearch-1']
-    },
-    {
       db: 'neo4j',
       name: `neo4j-${jobType}-${ingestName}`,
       cronJobName: `neo4j-${jobType}`,
       pods: ['neo4j-0', 'neo4j-1']
+    },
+    {
+      db: 'elastic',
+      name: `elastic-${jobType}-${ingestName}`,
+      cronJobName: `elastic-${jobType}`,
+      pods: ['elasticsearch-0', 'elasticsearch-1']
     }
   ];
   
   deleteJobs.on('exit', () => {
-    console.log('job type', jobType);
     jobType === 'bulk'
     ? createBulkJobs({ingestType, ingestName}, jobs)
     : createDeltaJobs({ingestType, ingestName}, jobs);
@@ -255,100 +254,24 @@ function checkJobStatus (jobName, jobComplete) {
   });
 }
 
-function waitForPods (pods, next) {
-  const checks = R.map(podName => ready => checkPodStatus(podName, ready))(pods);
+function onJobComplete (err) {
+  if (err) {
+    console.error(err);
+    enterErrorState();
+  } else {
+    waitForCompletion(ingestParams)
+  }
+}
+
+function waitForPods (job, next) {
+  const checks = R.map(podName => ready => checkPodStatus(podName, ready))(job.pods);
   async.parallel(checks, next);
 }
 
-function createBulkJobs (ingestParams, jobs) {
-  const [elastic, neo4j] = jobs;
-
-  waitForCompletion(ingestParams);
-
-  waitForPods(elastic.pods, err => {
-    if (err) {
-      console.error(err);
-      enterErrorState();
-    } else {
-      elasticStartTime = moment(new Date());
-
-      const args = R.concat(baseArgs, ['create', 'job', elastic.name, '--from', `cronjob/${elastic.cronJobName}`]);
-
-      const elasticJob = spawn('kubectl', args);
-      
-      elasticJob.on('exit', (code, sig) => {
-        const ts = moment(new Date());
-
-        if (code !== 0) {
-          console.error(`${ts.format('MMM Do HH:mm')}: ERROR ${elastic.name} terminated ${sig || 'with no signal'} code ${code}`);
-          enterErrorState();
-        } else {
-          console.log(`${ts.format('MMM Do HH:mm')}: ${elastic.name} triggered ${code}k`);
-
-          checkJobStatus(elastic.name, () => {
-            waitForPods(elastic.pods, err => {
-              if (err) {
-                console.error(err);
-                enterErrorState();
-              } else {
-                console.log(`${moment(new Date()).format('MMM Do HH:mm')}: ${elastic.name} pods ready`);
-                elasticEndTime = moment(new Date());
-              }
-            });
-          })
-        }
-      });
-    }
-  });
-
-  waitForPods(neo4j.pods, err => {
-    if (err) {
-      console.error(err);
-      enterErrorState();
-    } else {
-      neoStartTime = moment(new Date());
-
-      const args = R.concat(baseArgs, ['create', 'job', neo4j.name, '--from', `cronjob/${neo4j.cronJobName}`]);
-
-      const neo4jJob = spawn('kubectl', args);
-      
-      neo4jJob.on('exit', (code, sig) => {
-        const ts = moment(new Date());
-
-        if (code !== 0) {
-          console.error(`${ts.format('MMM Do HH:mm')}: ERROR ${neo4j.name} terminated ${sig || 'with no signal'} code ${code}`);
-          enterErrorState();
-        } else {
-          console.log(`${ts.format('MMM Do HH:mm')}: ${neo4j.name} triggered ${code}k`);
-          
-          checkJobStatus(neo4j.name, () => {
-            waitForPods(neo4j.pods, err => {
-              if (err) {
-                console.error(err);
-                enterErrorState();
-              } else {
-                console.log(`${moment(new Date()).format('MMM Do HH:mm')}: ${neo4j.name} pods ready`);
-                neoEndTime = moment(new Date());
-              }
-            })
-          });
-        }
-      });
-    }
-  });
-}
-
-function createDeltaJobs(ingestParams, jobs) {
-  
-  if (!jobs.length) return waitForCompletion(ingestParams);
-
-  const job = jobs.pop();
-
-  waitForPods(job.pods, err => {
-    if (err) {
-      console.error(err);
-      enterErrorState();
-    } else {
+function runJob (job, callback) {
+  async.waterfall([
+    next => waitForPods(job, next),
+    next => {
       const startTime = moment(new Date());
 
       job.db === 'neo4j' ? neoStartTime = startTime : elasticStartTime = startTime;
@@ -356,37 +279,36 @@ function createDeltaJobs(ingestParams, jobs) {
       const args = R.concat(baseArgs, ['create', 'job', job.name, '--from', `cronjob/${job.cronJobName}`]);
 
       const jobPod = spawn('kubectl', args);
+
+      jobPod.on('exit', code => code !== 0 ? next(new Error(`${job.name} exits with non zero code`)) : callback());
+    },
+    next => {      
+      console.log(`${moment(new Date()).format('MMM Do HH:mm')}: ${job.name} triggered :)`);
       
-      jobPod.on('exit', (code, sig) => {
-        const ts = moment(new Date());
-
-        if (code !== 0) {
-          console.error(`${ts.format('MMM Do HH:mm')}: ERROR ${job.name} terminated ${sig || 'with no signal'} code ${code}`);
-          enterErrorState();
-        } else {
-          console.log(`${ts.format('MMM Do HH:mm')}: ${job.name} triggered ${code}k`);
-          
-          checkJobStatus(job.name, () => {
-            waitForPods(job.pods, err => {
-              if (err) {
-                console.error(err);
-                enterErrorState();
-              } else {
-                const endTime = moment(new Date());
+      checkJobStatus(job.name, next);
+    },
+    next => waitForPods(job, next),
+    next => {
+      const endTime = moment(new Date());
                 
-                job.db === 'neo4j' ? neoEndTime = endTime : elasticEndTime = endTime;
-  
-                console.log(`${endTime.format('MMM Do HH:mm')}: ${job.name} pods ready`);
-                createDeltaJobs(ingestParams, jobs);
-              }
-            });
-          });
-        }
-      });
+      job.db === 'neo4j' ? neoEndTime = endTime : elasticEndTime = endTime;
+
+      console.log(`${endTime.format('MMM Do HH:mm')}: ${job.name} pods ready`);
     }
-  });
+  ], err => callback(err, job));
+}
 
+function createBulkJobs (ingestParams, jobs) {
+  const [neo4j, elastic] = jobs;
 
+  async.parallel([
+    done => runJob(neo4j, done),
+    done => runJob(elastic, done)
+  ], onJobComplete);
+}
+
+function createDeltaJobs(ingestParams, jobs) {
+  async.eachSeries(jobs, runJob, onJobComplete);
 }
 
 function enterErrorState () {
@@ -405,9 +327,7 @@ function enterErrorState () {
 
 function waitForCompletion ({ingestType, ingestName}) {
   const complete = moment(neoEndTime).isValid() && moment(elasticEndTime).isValid();
-  
-  console.log('waitForCompletion', {ingestType, ingestName}, complete);
-  
+
   if (!complete) {
     setTimeout(() => waitForCompletion({ingestType, ingestName}), pollingInterval);
   } else {
