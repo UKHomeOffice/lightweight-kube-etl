@@ -199,6 +199,8 @@ function deleteOldJobs ({ingestType, ingestName}, jobsToDelete) {
   const currentNeoJob = R.pipe(R.filter( R.startsWith(`neo4j-${jobType}`)), R.head)(jobsToDelete);
   const currentElasticJob = R.pipe(R.filter( R.startsWith(`elastic-${jobType}`)), R.head)(jobsToDelete);
   
+  console.log(`${moment(new Date()).format('MMM Do HH:mm')}: deleteing jobs ${currentNeoJob} & ${currentElasticJob}`);
+
   const deleteJobs = spawn('kubectl', R.concat(baseArgs, ['delete', 'jobs', currentNeoJob, currentElasticJob]));  
   
   const jobs = [
@@ -283,6 +285,7 @@ function createBulkJobs (ingestParams, jobs) {
               console.error(err);
               enterErrorState();
             } else {
+              console.log(`${moment(new Date()).format('MMM Do HH:mm')}: ${elastic.name} pods ready`);
               elasticEndTime = moment(new Date());
             }
           })
@@ -316,6 +319,7 @@ function createBulkJobs (ingestParams, jobs) {
               console.error(err);
               enterErrorState();
             } else {
+              console.log(`${moment(new Date()).format('MMM Do HH:mm')}: ${neo4j.name} pods ready`);
               neo4jEndTime = moment(new Date());
             }
           })
@@ -362,6 +366,7 @@ function createDeltaJobs(ingestParams, jobs) {
               
               job.db === 'neo4j' ? neoEndTime = endTime : elasticEndTime = endTime;
 
+              console.log(`${endTime.format('MMM Do HH:mm')}: ${job.name} pods ready`);
               createDeltaJobs(ingestParams, jobs);
             }
           });
