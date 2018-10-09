@@ -1,6 +1,34 @@
+/*
+
+.##....##.##.....##.########..########.........########.########.##......
+.##...##..##.....##.##.....##.##...............##..........##....##......
+.##..##...##.....##.##.....##.##...............##..........##....##......
+.#####....##.....##.########..######...#######.######......##....##......
+.##..##...##.....##.##.....##.##...............##..........##....##......
+.##...##..##.....##.##.....##.##...............##..........##....##......
+.##....##..#######..########..########.........########....##....########
+
+This is the KUBE-ETL that manages the ingestion of data into entity search.
+At present we have two data stores, 'elastic' and 'neo4j'. The following script
+basically executes these 10 steps:
+
+1) Keep looking into an s3 bucket for timestamped folders.
+2) Take the oldest timestamped folder and wait for it to have a 'manifest.json' file in it.
+3) Work out from the folder what kind of ingest it is 'delta' or 'bulk'.
+4) Delete any jobs for that kind of ingest
+5) Create job labels for the next ingest
+6) Trigger a neo4j job first and wait for the container to be ready (that indicates the end of the job).
+7) Trigger the elastic job (takes much less time) wait for this to complete.
+8) When both jobs are finished then delete the folder from s3.
+9) Work out how long everything took, and write that to mongodb.
+10) Exit the process with a zero code to start the whole thing again.
+
+*/
+
 const R = require('ramda');
 const moment = require('moment');
 const AWS = require("aws-sdk");
+const EventEmitter = require('events');
 const { spawn, exec } = require('child_process');
 const { insert: mongoClient } = require("./mongodb");
 
@@ -80,6 +108,20 @@ const getJobDuration = (start, end) => {
   return `${hours}h:${minutes < 10 ? `0${minutes}` : minutes}mins`;
 }
 
+const getPodStatus = (podStatus, startTime) => {
+  const [ready, state] = R.compose(
+    R.props(['ready', 'state']),
+    R.head,
+    R.filter(R.propEq('name', 'build')),
+    R.pathOr([], ['status', 'containerStatuses'])
+  )(podStatus);
+
+  const startedAt = R.pathOr(null, ['running', 'startedAt'])(state);
+  
+  return ready && startedAt && moment(startedAt).isAfter(startTime);
+}
+
+
 /*
 ..######..########....###....########..########
 .##....##....##......##.##...##.....##....##...
@@ -126,11 +168,11 @@ function waitForManifest (ingestParams) {
   s3.listObjectsV2({Bucket, Prefix: manifestPrefix, Delimiter: ""}, (err, {Contents}) => {
     return !Contents.length
       ? setTimeout(() => waitForManifest(ingestParams), pollingInterval)
-      : deleteOldJobs(ingestParams);
+      : getOldJobs(ingestParams);
   });
 };
 
-function deleteOldJobs (ingestParams) {
+function getOldJobs (ingestParams) {
 
   const {ingestType, ingestName} = ingestParams;
   const forIngestType = ingestType === 'incremental' ? new RegExp(/-delta-/) : new RegExp(/-bulk-/);
@@ -143,103 +185,125 @@ function deleteOldJobs (ingestParams) {
 
     const jobsToDelete = getJobLabels(forIngestType)(JSON.parse(stdout));
 
-    spawnIngestJobs(ingestParams, jobsToDelete);
+    deleteOldJobs(ingestParams, jobsToDelete);
   });
 }
 
-function spawnIngestJobs ({ingestType, ingestName}, jobsToDelete) {
-  const type = ingestType === 'incremental' ? 'delta' : ingestType;
-  const currentNeoJob = R.pipe(R.filter( R.startsWith(`neo4j-${type}`)), R.head)(jobsToDelete);
-  const currentElasticJob = R.pipe(R.filter( R.startsWith(`elastic-${type}`)), R.head)(jobsToDelete);
-  const nextNeoJob = `neo4j-${type}-${ingestName}`;
-  const nextElasticJob = `elastic-${type}-${ingestName}`;
-
-  const deleteNeo = spawn('kubectl', R.concat(baseArgs, ['delete', 'jobs', currentNeoJob]), {env: process.env});
+function deleteOldJobs ({ingestType, ingestName}, jobsToDelete) {
+  const jobType = ingestType === 'incremental' ? 'delta' : ingestType;
   
-  deleteNeo.on('exit', () => startNeoIngest(nextNeoJob, type));
-
-  const deleteElastic = spawn('kubectl', R.concat(baseArgs, ['delete', 'jobs', currentElasticJob]), {env: process.env});
+  const currentNeoJob = R.pipe(R.filter( R.startsWith(`neo4j-${jobType}`)), R.head)(jobsToDelete);
+  const currentElasticJob = R.pipe(R.filter( R.startsWith(`elastic-${jobType}`)), R.head)(jobsToDelete);
   
-  deleteNeo.on('exit', () => startElasticIngest(nextElasticJob, type));
+  const deleteJobs = spawn('kubectl', R.concat(baseArgs, ['delete', 'jobs', currentNeoJob, currentElasticJob]));  
   
-  waitForCompletion({ingestType, ingestName});
+  const jobs = [
+    {
+      db: 'neo4j',
+      name: `elastic-${jobType}-${ingestName}`,
+      cronJobName: `elastic-${jobType}`,
+      pods: ['elasticsearch-0', 'elasticsearch-1']
+    },
+    {
+      db: 'elastic',
+      name: `neo4j-${jobType}-${ingestName}`,
+      cronJobName: `neo4j-${jobType}`,
+      pods: ['neo4j-0', 'neo4j-1']
+    }
+  ];
+  
+  deleteJobs.on('exit', () => createNewJobs({ingestType, ingestName}, jobs));
 }
 
 /*
-.##....##.########..#######..##..............##
-.###...##.##.......##.....##.##....##........##
-.####..##.##.......##.....##.##....##........##
-.##.##.##.######...##.....##.##....##........##
-.##..####.##.......##.....##.#########.##....##
-.##...###.##.......##.....##.......##..##....##
-.##....##.########..#######........##...######.
+.......##..#######..########...######.
+.......##.##.....##.##.....##.##....##
+.......##.##.....##.##.....##.##......
+.......##.##.....##.########...######.
+.##....##.##.....##.##.....##.......##
+.##....##.##.....##.##.....##.##....##
+..######...#######..########...######.
 */
 
-function startNeoIngest (nextNeoJob, cronjobType) {
-  neoStartTime = moment(new Date());
+class WaitForJob extends EventEmitter {
+  constructor(job) {
+    super();
 
-  console.log(`${moment(neoStartTime).format('MMM Do hh:mm')}: starting neo ingest ${nextNeoJob}`);
-   
-  const args = R.concat(baseArgs, ['create', 'job', nextNeoJob, '--from', `cronjob/neo4j-${cronjobType}`]);
+    this.db = job.db;
+    this.pod0 = job.pods[0];
+    this.pod1 = job.pods[1];
+    this.pod0_ready = false;
+    this.pod1_ready = false;
+    this._poll_pod0();
+    this._poll_pod1();
+    this._hasFinished();
+  }
 
-  const job = spawn('kubectl', args, {env: process.env});
+  _poll_pod0 () {
+    const self = this;
+    
+    exec(`kubectl ${R.join(' ', baseArgs)} get pods ${self.pod0} -o json`, (err, stdout, stderr) => {
+      const startTime = self.db === 'neo4j' ? neoStartTime : elasticStartTime;
+      const ready = getPodStatus(JSON.parse(stdout), startTime);
+      
+      ready ? self.pod0_ready = true : setTimeout(() => self._poll_pod0(), pollingInterval);
+    });
+  }
 
-  job.on('exit', (code) => {
+  _poll_pod1 () {
+    const self = this;
+    
+    exec(`kubectl ${R.join(' ', baseArgs)} get pods ${self.pod1} -o json`, (err, stdout, stderr) => {
+      const startTime = self.db === 'neo4j' ? neoStartTime : elasticStartTime;
+      const ready = getPodStatus(JSON.parse(stdout), startTime);
+      
+      ready ? self.pod1_ready = true : setTimeout(() => self._poll_pod1(), pollingInterval);
+    });
+  }
+
+  _hasFinished () {
+    const self = this;
+
+    self.pod0_ready && self.pod1_ready
+      ? self.emit('finished')
+      : setTimeout(() => self._hasFinished(), pollingInterval);
+  }
+};
+
+function createNewJobs(ingestParams, jobs) {
+  
+  if (!jobs.length) return waitForCompletion(ingestParams);
+
+  const job = jobs.pop();
+
+  const startTime = moment(new Date());
+
+  job.db === 'neo4j' ? neoStartTime = startTime : elasticStartTime = startTime;
+
+  console.log(`${moment(neoStartTime).format('MMM Do HH:mm')}: starting ${job.name}`);
+
+  const args = R.concat(baseArgs, ['create', 'job', job.name, '--from', `cronjob/${job.cronJobName}`]);
+
+  const handleError = (code, sig) => {
     if (code !== 0) {
-      console.error(`${moment(new Date).format('MMM Do hh:mm')}: ERROR ${nextNeoJob} exits with non-zero code ${code}`);
+      console.error(`${moment(new Date).format('MMM Do HH:mm')}: ERROR ${job.name} terminated with signal ${sig}`);
       enterErrorState();
-    } else {
-      console.error(`${moment(new Date).format('MMM Do hh:mm')}: created new job ${nextNeoJob}`);
-      setTimeout(() => isJobCompleted(nextNeoJob, false), pollingInterval);
     }
+  }
+  
+  const jobPod = spawn('kubectl', args, {env: process.env});
+  
+  jobPod.on('exit', handleError);
+  jobPod.on('error', handleError);
+
+  waitForJob = new WaitForJob(job);
+  waitForJob.on('finished', () => {
+    const endTime = moment(new Date());
+    job.db === 'neo4j' ? neoEndTime = endTime : elasticEndTime = endTime;
+    createNewJobs(ingestParams, jobs);
   });
 }
 
-function onNeoCompleted (jobName) {
-  neoEndTime = moment(new Date);
-
-  const jobDuration = getJobDuration(neoStartTime, neoEndTime);
-
-  console.log(`${neoEndTime.format('MMM Do hh:mm')}: completed ${jobName} in ${jobDuration}`);
-}
-
-/*
-.########.##..........###.....######..########.####..######.
-.##.......##.........##.##...##....##....##.....##..##....##
-.##.......##........##...##..##..........##.....##..##......
-.######...##.......##.....##..######.....##.....##..##......
-.##.......##.......#########.......##....##.....##..##......
-.##.......##.......##.....##.##....##....##.....##..##....##
-.########.########.##.....##..######.....##....####..######.
-*/
-
-function startElasticIngest (nextElasticJob, cronjobType) {
-  elasticStartTime = moment(new Date());
-
-  console.log(`${moment(elasticStartTime).format('MMM Do hh:mm')}: starting elastic ingest ${nextElasticJob}`);
-   
-  const args = R.concat(baseArgs, ['create', 'job', nextElasticJob, '--from', `cronjob/elastic-${cronjobType}`]);
-
-  const job = spawn('kubectl', args, {env: process.env});
-
-  job.on('exit', (code) => {
-    if (code !== 0) {
-      console.error(`${moment(new Date).format('MMM Do hh:mm')}: ERROR ${nextElasticJob} exits with non-zero code ${code}`);
-      enterErrorState();
-    } else {
-      console.error(`${moment(new Date).format('MMM Do hh:mm')}: created new job ${nextElasticJob}`);
-      setTimeout(() => isJobCompleted(nextElasticJob, false), pollingInterval);
-    }
-  });
-}
-
-function onElasticComplete (jobName) {
-  elasticEndTime = moment(new Date);
-
-  const jobDuration = getJobDuration(elasticStartTime, elasticEndTime);
-
-  console.log(`${elasticEndTime.format('MMM Do hh:mm')}: completed ${jobName} in ${jobDuration}`);  
-}
 
 function enterErrorState () {
   setTimeout(enterErrorState, pollingInterval);
@@ -273,7 +337,7 @@ function waitForCompletion ({ingestType, ingestName}) {
       const ts = moment(new Date());
      
       if (err) {
-        console.error(`${ts.format('MMM Do hh:mm')}: ${JSON.stringify(err, null, 2)}`);
+        console.error(`${ts.format('MMM Do HH:mm')}: ${JSON.stringify(err, null, 2)}`);
         enterErrorState();
       } else {
         
@@ -285,28 +349,11 @@ function waitForCompletion ({ingestType, ingestName}) {
           total_job_duration: getJobDuration(neoStartTime, ts)
         }
         
-        console.log(`${ts.format('MMM Do hh:mm')}: ${JSON.stringify(store_ingest_details, null, 4)}`);
+        console.log(`${ts.format('MMM Do HH:mm')}: ${JSON.stringify(store_ingest_details, null, 4)}`);
 
         mongoClient(store_ingest_details).then(process.exit);
       }
     })
-  }
-}
-
-function isJobCompleted (jobName, status) {
-  if (status) {
-    R.startsWith('neo4j')(jobName) ? onNeoCompleted(jobName) : onElasticComplete(jobName);
-  } else {
-    exec(`kubectl ${baseArgs.join(' ')} get jobs ${jobName} -o json`, (err, stdout, stderr) => {
-      if (err) {
-        console.error(err);
-        return enterErrorState();
-      }
-
-      const status = getStatus(JSON.parse(stdout));
-  
-      setTimeout(() => isJobCompleted(jobName, status), pollingInterval);
-    });
   }
 }
 
@@ -319,13 +366,6 @@ module.exports = {
   getStatus,
   getIngestFiles,
   getJobDuration,
-  start,
-  waitForManifest,
-  deleteOldJobs,
-  spawnIngestJobs,
-  startNeoIngest,
-  startElasticIngest,
-  onElasticComplete,
-  waitForCompletion,
-  isJobCompleted,
+  getPodStatus,
+  start
 };
