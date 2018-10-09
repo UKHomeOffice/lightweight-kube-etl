@@ -429,6 +429,7 @@ function waitForCompletion ({ingestType, ingestName}) {
         
         const store_ingest_details = {
           ingest: ingestName,
+          type: ingestType,
           loadDate: Date.now(),
           neo_job_duration: getJobDuration(neoStartTime, neoEndTime),
           elastic_job_duration: getJobDuration(elasticStartTime, elasticEndTime),
