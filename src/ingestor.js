@@ -188,7 +188,9 @@ function deleteOldJobs ({ingestType, ingestName}, jobsToDelete) {
   const currentNeoJob = R.pipe(R.filter( R.startsWith(`neo4j-${jobType}`)), R.head)(jobsToDelete);
   const currentElasticJob = R.pipe(R.filter( R.startsWith(`elastic-${jobType}`)), R.head)(jobsToDelete);
   
-  console.log(`${moment(new Date()).format('MMM Do HH:mm')}: delete jobs ${currentNeoJob} & ${currentElasticJob}`);
+  if (currentNeoJob && currentElasticJob) {
+    console.log(`${moment(new Date()).format('MMM Do HH:mm')}: delete jobs ${currentNeoJob} & ${currentElasticJob}`);
+  }
 
   const deleteJobs = spawn('kubectl', R.concat(baseArgs, ['delete', 'jobs', currentNeoJob, currentElasticJob]));  
   
@@ -208,6 +210,7 @@ function deleteOldJobs ({ingestType, ingestName}, jobsToDelete) {
   ];
   
   deleteJobs.on('exit', () => {
+    console.log('job type', jobType);
     jobType === 'bulk'
     ? createBulkJobs({ingestType, ingestName}, jobs)
     : createDeltaJobs({ingestType, ingestName}, jobs);
@@ -225,16 +228,30 @@ function deleteOldJobs ({ingestType, ingestName}, jobsToDelete) {
 */
 
 function checkPodStatus (podName, podReady) {
-  const poll = () => getPodStatus(pod, podReady)
+  const poll = () => checkPodStatus(podName, podReady);
+  
   exec(`kubectl ${R.join(' ', baseArgs)} get pods ${podName} -o json`, (err, stdout, stderr) => {
-    
-    if (err || stderr) setTimeout(poll, pollingInterval);
+    if (err || stderr) {
+      setTimeout(poll, pollingInterval);
+    } else {
+      const ready = getPodStatus(JSON.parse(stdout));
+  
+      ready ? podReady() : setTimeout(poll, pollingInterval);
+    }
+  });
+}
 
-    const ready = getPodStatus(JSON.parse(stdout));
+function checkJobStatus (jobName, jobComplete) {
+  const poll = () => checkJobStatus(jobName, jobComplete);
 
-    console.log(`${podName}: ${ready ? 'ready' : 'waiting...'}`);
-
-    ready ? podReady() : setTimeout(poll, pollingInterval);
+  exec(`kubectl ${R.join(' ', baseArgs)} get jobs ${jobName} -o json`, (err, stdout, stderr) => {
+    if (err || stderr) {
+      setTimeout(poll, pollingInterval);
+    } else {
+      const ready = getStatus(JSON.parse(stdout));
+  
+      ready ? jobComplete() : setTimeout(poll, pollingInterval);
+    }
   });
 }
 
@@ -267,15 +284,17 @@ function createBulkJobs (ingestParams, jobs) {
           enterErrorState();
         } else {
           console.log(`${ts.format('MMM Do HH:mm')}: ${elastic.name} triggered ${code}k`);
-          
-          waitForPods(elastic.pods, err => {
-            if (err) {
-              console.error(err);
-              enterErrorState();
-            } else {
-              console.log(`${moment(new Date()).format('MMM Do HH:mm')}: ${elastic.name} pods ready`);
-              elasticEndTime = moment(new Date());
-            }
+
+          checkJobStatus(elastic.name, () => {
+            waitForPods(elastic.pods, err => {
+              if (err) {
+                console.error(err);
+                enterErrorState();
+              } else {
+                console.log(`${moment(new Date()).format('MMM Do HH:mm')}: ${elastic.name} pods ready`);
+                elasticEndTime = moment(new Date());
+              }
+            });
           })
         }
       });
@@ -287,7 +306,7 @@ function createBulkJobs (ingestParams, jobs) {
       console.error(err);
       enterErrorState();
     } else {
-      neo4jStartTime = moment(new Date());
+      neoStartTime = moment(new Date());
 
       const args = R.concat(baseArgs, ['create', 'job', neo4j.name, '--from', `cronjob/${neo4j.cronJobName}`]);
 
@@ -302,15 +321,17 @@ function createBulkJobs (ingestParams, jobs) {
         } else {
           console.log(`${ts.format('MMM Do HH:mm')}: ${neo4j.name} triggered ${code}k`);
           
-          waitForPods(neo4j.pods, err => {
-            if (err) {
-              console.error(err);
-              enterErrorState();
-            } else {
-              console.log(`${moment(new Date()).format('MMM Do HH:mm')}: ${neo4j.name} pods ready`);
-              neo4jEndTime = moment(new Date());
-            }
-          })
+          checkJobStatus(neo4j.name, () => {
+            waitForPods(neo4j.pods, err => {
+              if (err) {
+                console.error(err);
+                enterErrorState();
+              } else {
+                console.log(`${moment(new Date()).format('MMM Do HH:mm')}: ${neo4j.name} pods ready`);
+                neoEndTime = moment(new Date());
+              }
+            })
+          });
         }
       });
     }
@@ -345,18 +366,20 @@ function createDeltaJobs(ingestParams, jobs) {
         } else {
           console.log(`${ts.format('MMM Do HH:mm')}: ${job.name} triggered ${code}k`);
           
-          waitForPods(job.pods, err => {
-            if (err) {
-              console.error(err);
-              enterErrorState();
-            } else {
-              const endTime = moment(new Date());
-              
-              job.db === 'neo4j' ? neoEndTime = endTime : elasticEndTime = endTime;
-
-              console.log(`${endTime.format('MMM Do HH:mm')}: ${job.name} pods ready`);
-              createDeltaJobs(ingestParams, jobs);
-            }
+          checkJobStatus(job.name, () => {
+            waitForPods(job.pods, err => {
+              if (err) {
+                console.error(err);
+                enterErrorState();
+              } else {
+                const endTime = moment(new Date());
+                
+                job.db === 'neo4j' ? neoEndTime = endTime : elasticEndTime = endTime;
+  
+                console.log(`${endTime.format('MMM Do HH:mm')}: ${job.name} pods ready`);
+                createDeltaJobs(ingestParams, jobs);
+              }
+            });
           });
         }
       });
@@ -382,7 +405,9 @@ function enterErrorState () {
 
 function waitForCompletion ({ingestType, ingestName}) {
   const complete = moment(neoEndTime).isValid() && moment(elasticEndTime).isValid();
-
+  
+  console.log('waitForCompletion', {ingestType, ingestName}, complete);
+  
   if (!complete) {
     setTimeout(() => waitForCompletion({ingestType, ingestName}), pollingInterval);
   } else {
