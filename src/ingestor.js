@@ -8,20 +8,20 @@
 .##...##..##.....##.##.....##.##...............##..........##....##......
 .##....##..#######..########..########.........########....##....########
 
-This is the KUBE-ETL that manages the ingestion of data into entity search.
-At present we have two data stores, 'elastic' and 'neo4j'. The following script
-basically executes these 10 steps:
+This is the KUBE-ETL that manages the jobs that perform the ingestion of data into entity search.
+At present we have two datastores; 'elastic' and 'neo4j'. The following script
+basically executes 10 steps:
 
 1) Keep looking into an s3 bucket for timestamped folders.
 2) Take the oldest timestamped folder and wait for it to have a 'manifest.json' file in it.
 3) Work out from the folder what kind of ingest it is 'delta' or 'bulk'.
-4) Delete any jobs for that kind of ingest
-5) Create job labels for the next ingest
-6) Trigger a neo4j job first and wait for the container to be ready (that indicates the end of the job).
-7) Trigger the elastic job (takes much less time) wait for this to complete.
-8) When both jobs are finished then delete the folder from s3.
+4) Delete any jobs for that kind of ingest.
+5) If it is a bulk trigger the ingests in parallel, if it is a delta, do neo4j first then elastic.
+6) Wait for all the jobs to finish.
+7) Wait for all the pods to be ready.
+8) When both jobs are finished and all the pods are up then delete the ingest folder from s3.
 9) Work out how long everything took, and write that to mongodb.
-10) Exit the process with a zero code to start the whole thing again.
+10) Exit the process with a zero code then kubernetes will start the whole thing again.
 
 */
 
@@ -49,7 +49,7 @@ const s3 = new AWS.S3({
 
 let neoStartTime, neoEndTime = null, elasticStartTime, elasticEndTime = null, ingestFiles;
 
-const pollingInterval = NODE_ENV === 'test' ? 1000 : 1000 * 60;
+const pollingInterval = NODE_ENV === 'test' ? 1000 : 1000 * 30;
 
 const isTimestamp = label => !!(label && moment.unix(label).isValid());
 
@@ -254,7 +254,7 @@ function checkJobStatus (jobName, jobComplete) {
   });
 }
 
-function onJobComplete (err) {
+const onJobComplete = ingestParams => err => {
   if (err) {
     console.error(err);
     enterErrorState();
@@ -304,11 +304,11 @@ function createBulkJobs (ingestParams, jobs) {
   async.parallel([
     done => runJob(neo4j, done),
     done => runJob(elastic, done)
-  ], onJobComplete);
+  ], onJobComplete(ingestParams));
 }
 
 function createDeltaJobs(ingestParams, jobs) {
-  async.eachSeries(jobs, runJob, onJobComplete);
+  async.eachSeries(jobs, runJob, onJobComplete(ingestParams));
 }
 
 function enterErrorState () {
