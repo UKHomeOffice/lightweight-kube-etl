@@ -232,9 +232,9 @@ function checkPodStatus (podName, podReady) {
 
     const ready = getPodStatus(JSON.parse(stdout));
 
-    const db = R.startsWith('neo4j', podName) ? 'neo4j' : 'elastic'
-    
-    ready ? podReady(null, podName) : setTimeout(poll, pollingInterval);
+    console.log(`${podName}: ${ready ? 'ready' : 'waiting...'}`);
+
+    ready ? podReady() : setTimeout(poll, pollingInterval);
   });
 }
 
@@ -248,8 +248,7 @@ function createBulkJobs (ingestParams, jobs) {
 
   waitForCompletion(ingestParams);
 
-  waitForPods(elastic.pods, (err, results) => {
-    console.log('waitForPods', {err, results});
+  waitForPods(elastic.pods, err => {
     if (err) {
       console.error(err);
       enterErrorState();
@@ -413,7 +412,7 @@ function waitForCompletion ({ingestType, ingestName}) {
         
         console.log(`${ingestEndTime.format('MMM Do HH:mm')}: ${JSON.stringify(store_ingest_details, null, 4)}`);
 
-        mongoClient(store_ingest_details).then(process.exit);
+        mongoClient(store_ingest_details).then(() => process.exit(0));
       }
     })
   }
