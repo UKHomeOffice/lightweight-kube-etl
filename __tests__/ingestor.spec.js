@@ -8,20 +8,12 @@ const {
   getJobLabels,
   filterJobs,
   getStatus,
+  getPodStatus,
   getIngestFiles,
-  getJobDuration,
-  start,
-  waitForManifest,
-  deleteOldJobs,
-  spawnIngestJobs,
-  startNeoIngest,
-  startElasticIngest,
-  onElasticComplete,
-  waitForCompletion,
-  isJobCompleted,
+  getJobDuration
 } = ingestor;
 
-const m = require('moment');
+const moment = require('moment');
 
 const s3 = {
   listObjectsV2: jest.fn().mockImplementation((params, cb) => {
@@ -91,6 +83,77 @@ const sample_running_job = {
   "status": {
     "startTime": "2016-09-22T13:56:42Z",
     "active": 1,
+  }
+}
+
+const sample_pod_status_ready = {
+  "status": {
+    "containerStatuses": [
+      {
+        "name": "build",
+        "ready": true,
+        "restartCount": 0,
+        "state": {
+            "running": {
+                "startedAt": "2018-10-10T10:10:00Z"
+            }
+        }
+      },
+      {
+        "name": "neo4j",
+        "ready": true,
+        "restartCount": 0,
+        "state": {
+            "running": {
+                "startedAt": "2018-10-10T10:11:00Z"
+            }
+        }
+      }
+    ]
+  }
+}
+
+const sample_pod_status_not_ready = {
+  "status": {
+    "containerStatuses": [
+      {
+        "name": "build",
+        "ready": true,
+        "restartCount": 0,
+        "state": {
+            "running": {
+                "startedAt": "2018-10-09T10:10:00Z"
+            }
+        }
+      },
+      {
+        "name": "neo4j",
+        "ready": true,
+        "restartCount": 0,
+        "state": {
+            "running": {
+                "startedAt": "2018-10-10T10:11:00Z"
+            }
+        }
+      }
+    ]
+  }
+}
+
+const sample_pod_not_ready = {
+  "status": {
+    "containerStatuses": [
+      {
+        "name": "build",
+        "ready": false,
+        "restartCount": 0,
+        "state": {
+            "running": {
+                "startedAt": "2018-10-09T10:10:00Z"
+            }
+        }
+      }
+    ]
   }
 }
 
@@ -181,12 +244,22 @@ describe('Simple Ingestor Helper Functions', () => {
   });
 
   it('should be able to get a job duration', () => {
-    const start = m('1970-01-01T13:00:00');
-    const end = m('1970-01-01T14:30:00');
-    const s_zero_pad = m('1970-01-01T13:00:00');
-    const e_zero_pad = m('1970-01-01T14:09:00');
+    const start = moment('1970-01-01T13:00:00');
+    const end = moment('1970-01-01T14:30:00');
+    const s_zero_pad = moment('1970-01-01T13:00:00');
+    const e_zero_pad = moment('1970-01-01T14:09:00');
 
     expect(getJobDuration(start, end)).toBe('1h:30mins');
     expect(getJobDuration(s_zero_pad, e_zero_pad)).toBe('1h:09mins');
+  });
+
+  it('should be able to find the status of a pod', () => {
+    const pod_ready = getPodStatus(sample_pod_status_ready, moment('2018-10-10T10:01:00Z'));
+    const pod_not_ready = getPodStatus(sample_pod_status_not_ready, moment('2018-10-10T10:10:00Z'));
+    const pod_false_ready =  getPodStatus(sample_pod_not_ready, moment('2018-10-10T10:01:00Z'));
+
+    expect(pod_ready).toBe(true);
+    expect(pod_not_ready).toBe(false);
+    expect(pod_false_ready).toBe(false);
   });
 });
