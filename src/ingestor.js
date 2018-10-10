@@ -146,7 +146,7 @@ function start () {
       
       ingestFiles = getIngestFiles(ingestParams)(folder);
       
-      console.log(`new ${ingestParams.ingestType} ingest detected in folder ${ingestParams.ingestName}  - waiting for manifest file...`)
+      console.log(`new ${ingestParams.ingestType} ingest detected in folder ${ingestParams.ingestName} - waiting for manifest file...`)
 
       waitForManifest(ingestParams)
     }
@@ -159,7 +159,7 @@ function waitForManifest (ingestParams) {
   const manifestPrefix = `pending/${ingestName}/manifest.json`;
 
   s3.listObjectsV2({Bucket, Prefix: manifestPrefix, Delimiter: ""}, (err, {Contents}) => {
-    return !Contents.length
+    !Contents.length
       ? setTimeout(() => waitForManifest(ingestParams), pollingInterval)
       : getOldJobs(ingestParams);
   });
@@ -265,7 +265,7 @@ const onJobComplete = ingestParams => err => {
 
 function waitForPods (job, next) {
   const checks = R.map(podName => ready => checkPodStatus(podName, ready))(job.pods);
-  async.parallel(checks, next);
+  async.parallel(checks, err => next(err));
 }
 
 function runJob (job, callback) {
@@ -280,22 +280,28 @@ function runJob (job, callback) {
 
       const jobPod = spawn('kubectl', args);
 
-      jobPod.on('exit', code => code !== 0 ? next(new Error(`${job.name} exits with non zero code`)) : callback());
+      jobPod.on('exit', code => {
+        const err = code !== 0 ? new Error(`${job.name} exits with non zero code`) : null;
+        next(err);
+      });
     },
     next => {      
       console.log(`${moment(new Date()).format('MMM Do HH:mm')}: ${job.name} triggered :)`);
       
       checkJobStatus(job.name, next);
     },
-    next => waitForPods(job, next),
-    next => {
+    next => waitForPods(job, next)
+  ], err => {
+    if (!err) {
       const endTime = moment(new Date());
                 
       job.db === 'neo4j' ? neoEndTime = endTime : elasticEndTime = endTime;
-
+  
       console.log(`${endTime.format('MMM Do HH:mm')}: ${job.name} pods ready`);
     }
-  ], err => callback(err, job));
+
+    callback(err);
+  });
 }
 
 function createBulkJobs (ingestParams, jobs) {
