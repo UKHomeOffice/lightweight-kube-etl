@@ -48,7 +48,7 @@ const s3 = new AWS.S3({
 
 let neoStartTime, neoEndTime = null, elasticStartTime, elasticEndTime = null, ingestFiles;
 
-const pollingInterval = NODE_ENV === 'test' ? 1000 : 1000 * 30;
+const pollingInterval = NODE_ENV === 'test' ? 1000 : 1000 * 60;
 
 const isTimestamp = label => !!(label && moment.unix(label).isValid());
 
@@ -302,7 +302,8 @@ function runJob (job, callback) {
       
       checkJobStatus(job.name, next);
     },
-    next => waitForPods(job, next)
+    next => setTimeout(next, pollingInterval), //wait for drone to trigger a rolling update
+    next => waitForPods(job, next) // wait for the updates to roll through the cluster
   ], err => {
     if (!err) {
       const endTime = moment(new Date());
