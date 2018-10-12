@@ -37,14 +37,13 @@ const {
   KUBE_SERVICE_ACCOUNT_TOKEN,
   S3_ACCESS_KEY,
   S3_SECRET_KEY,
-  REGION,
   NODE_ENV = 'production'
 } = process.env;
 
 const s3 = new AWS.S3({
   accessKeyId: S3_ACCESS_KEY,
   secretAccessKey: S3_SECRET_KEY,
-  region: REGION
+  region: 'eu-west-2'
 });
 
 let neoStartTime, neoEndTime = null, elasticStartTime, elasticEndTime = null, ingestFiles;
@@ -65,17 +64,24 @@ const hasTimestampFolders = R.compose(
   R.prop('Contents')
 );
 
-const getIngestJobParams = R.compose(
-  R.evolve({ingestType: R.replace(".txt", "")}),
-  R.zipObj(["ingestName", "ingestType"]),
-  R.tail,
-  R.head,
-  R.sort((older, newer) => (older[1] > newer[1])),
-  R.filter(R.compose(R.contains(R.__, ["bulk.txt", "incremental.txt"]), R.last)),
-  R.map(R.take(3)),
-  R.map(R.compose(R.split("/"), R.prop("Key"))),
-  R.prop('Contents')
-);
+const getIngestJobParams = folder => {
+  const oldestFolder = R.compose(
+    R.head,
+    R.sort((older, newer) => (older[1] > newer[1])),
+    R.filter(R.compose(R.contains(R.__, ["bulk.txt", "incremental.txt"]), R.last)),
+    R.map(R.take(3)),
+    R.map(R.compose(R.split("/"), R.prop("Key"))),
+    R.prop('Contents')
+  )(folder);
+
+  if (!oldestFolder) return;
+
+  return R.compose(
+    R.evolve({ingestType: R.replace(".txt", "")}),
+    R.zipObj(["ingestName", "ingestType"]),
+    R.tail,
+  )(oldestFolder);
+}
 
 const getJobLabels = forIngestType => R.compose(
   R.filter(R.test(forIngestType)),
@@ -143,11 +149,16 @@ function start () {
 
     } else {
       const ingestParams = getIngestJobParams(folder);
+
+      if (!ingestParams) {
+        console.error('error in s3 bucket - check folders');
+        return setTimeout(start, pollingInterval);
+      }
       
       ingestFiles = getIngestFiles(ingestParams)(folder);
       
       console.log(`new ${ingestParams.ingestType} ingest detected in folder ${ingestParams.ingestName} - waiting for manifest file...`)
-
+      
       waitForManifest(ingestParams)
     }
   });
@@ -248,7 +259,11 @@ function checkJobStatus (jobName, jobComplete) {
       setTimeout(poll, pollingInterval);
     } else {
       const ready = getStatus(JSON.parse(stdout));
-  
+
+      const startTime = R.startsWith('neo4j', jobName) ? neoStartTime : elasticStartTime;
+
+      console.log(`${jobName} - ${ready ? 'completed' : 'running...'}`, getJobDuration(startTime, moment(new Date())));
+
       ready ? jobComplete() : setTimeout(poll, pollingInterval);
     }
   });
@@ -357,6 +372,7 @@ function waitForCompletion ({ingestType, ingestName}) {
           ingest: ingestName,
           type: ingestType,
           loadDate: Date.now(),
+          readableDate: moment(new Date()).format('MMM Do HH:mm'),
           neo_job_duration: getJobDuration(neoStartTime, neoEndTime),
           elastic_job_duration: getJobDuration(elasticStartTime, elasticEndTime),
           total_job_duration: getJobDuration(neoStartTime, ingestEndTime)
@@ -364,7 +380,7 @@ function waitForCompletion ({ingestType, ingestName}) {
         
         console.log(`${ingestEndTime.format('MMM Do HH:mm')}: ${JSON.stringify(store_ingest_details, null, 4)}`);
 
-        mongoClient(store_ingest_details).then(() => process.exit(0));
+        mongoClient(store_ingest_details).then(() => start());
       }
     })
   }

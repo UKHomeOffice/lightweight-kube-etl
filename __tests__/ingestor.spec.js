@@ -63,6 +63,17 @@ const sample_s3_ts_folders = {
   ]
 }
 
+const sample_s3_bad_folders = {
+  Contents: [
+    {
+      Key: 'pending/.DS_Store'
+    },
+    {
+      Key: 'pending/1538055240/person/person_headers.csv.gz'
+    }
+  ]
+}
+
 const sample_complete_job = {
   "status": {
     "conditions": [
@@ -177,6 +188,12 @@ describe('Simple Ingestor Helper Functions', () => {
 
     expect(ingestType).toBe('bulk');
     expect(ingestName).toBe('1538055240');
+  });
+
+  it('handles mis-formed folder contents', () => {
+    const response = getIngestJobParams(sample_s3_bad_folders);
+
+    expect(response).toBeFalsy();
   });
 
   it('extracts job labels from kubectl responses', () => {
