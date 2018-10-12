@@ -260,10 +260,6 @@ function checkJobStatus (jobName, jobComplete) {
     } else {
       const ready = getStatus(JSON.parse(stdout));
 
-      const startTime = R.startsWith('neo4j', jobName) ? neoStartTime : elasticStartTime;
-
-      console.log(`${jobName} - ${ready ? 'completed' : 'running...'}`, getJobDuration(startTime, moment(new Date())));
-
       ready ? jobComplete() : setTimeout(poll, pollingInterval);
     }
   });
@@ -287,20 +283,21 @@ function runJob (job, callback) {
   async.waterfall([
     next => waitForPods(job, next),
     next => {
-      const startTime = moment(new Date());
-
-      job.db === 'neo4j' ? neoStartTime = startTime : elasticStartTime = startTime;
-
+      
       const args = R.concat(baseArgs, ['create', 'job', job.name, '--from', `cronjob/${job.cronJobName}`]);
-
+      
       const jobPod = spawn('kubectl', args);
-
+      
       jobPod.on('exit', code => {
         const err = code !== 0 ? new Error(`${job.name} exits with non zero code`) : null;
         next(err);
       });
     },
     next => {      
+      const startTime = moment(new Date());
+  
+      job.db === 'neo4j' ? neoStartTime = startTime : elasticStartTime = startTime;
+
       console.log(`${moment(new Date()).format('MMM Do HH:mm')}: ${job.name} triggered :)`);
       
       checkJobStatus(job.name, next);
