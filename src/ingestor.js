@@ -31,20 +31,13 @@ const async = require('async');
 const AWS = require("aws-sdk");
 const { spawn, exec } = require('child_process');
 const { insert: mongoClient } = require("./mongodb");
+const s3 = require('./s3-client');
 
 const { 
   BUCKET: Bucket, 
   KUBE_SERVICE_ACCOUNT_TOKEN,
-  S3_ACCESS_KEY,
-  S3_SECRET_KEY,
   NODE_ENV = 'production'
 } = process.env;
-
-const s3 = new AWS.S3({
-  accessKeyId: S3_ACCESS_KEY,
-  secretAccessKey: S3_SECRET_KEY,
-  region: 'eu-west-2'
-});
 
 let neoStartTime, neoEndTime = null, elasticStartTime, elasticEndTime = null, ingestFiles;
 
