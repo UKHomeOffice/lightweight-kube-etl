@@ -16,12 +16,12 @@ basically executes 10 steps:
 2) Take the oldest timestamped folder and wait for it to have a 'manifest.json' file in it.
 3) Work out from the folder what kind of ingest it is 'delta' or 'bulk'.
 4) Delete any jobs for that kind of ingest.
-5) If it is a bulk trigger the ingests in parallel, if it is a delta, do neo4j first then elastic.
+5) If it is a bulk trigger the ingests in parallel, if it is a delta, do neo4j first then elastic in series.
 6) Wait for all the jobs to finish.
-7) Wait for all the pods to be ready.
-8) When both jobs are finished and all the pods are up then delete the ingest folder from s3.
-9) Work out how long everything took, and write that to mongodb.
-10) Exit the process with a zero code then kubernetes will start the whole thing again.
+7) Give drone 1minute to trigger a rolling update.
+8) Wait for all the pods to be ready after the rolling update.
+9) Delete the ingest folder from s3.
+10) Work out how long everything took, and write that to mongodb. Start the whole thing again.
 
 */
 
@@ -369,8 +369,8 @@ function waitForCompletion ({ingestType, ingestName}) {
         const store_ingest_details = {
           ingest: ingestName,
           type: ingestType,
-          loadDate: Date.now(),
-          readableDate: moment(new Date()).format('MMM Do HH:mm'),
+          load_date: Date.now(),
+          readable_date: moment(new Date()).format('MMM Do HH:mm'),
           neo_job_duration: getJobDuration(neoStartTime, neoEndTime),
           elastic_job_duration: getJobDuration(elasticStartTime, elasticEndTime),
           total_job_duration: getJobDuration(neoStartTime, ingestEndTime)
