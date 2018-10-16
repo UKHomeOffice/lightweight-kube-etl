@@ -28,35 +28,26 @@ basically executes 10 steps:
 const R = require('ramda');
 const moment = require('moment');
 const async = require('async');
-const AWS = require("aws-sdk");
 const { spawn, exec } = require('child_process');
 const { insert: mongoClient } = require("./mongodb");
+const s3 = require('./s3-client');
 
 const { 
   BUCKET: Bucket, 
   KUBE_SERVICE_ACCOUNT_TOKEN,
-  S3_ACCESS_KEY,
-  S3_SECRET_KEY,
   NODE_ENV = 'production'
 } = process.env;
 
-const s3 = new AWS.S3({
-  accessKeyId: S3_ACCESS_KEY,
-  secretAccessKey: S3_SECRET_KEY,
-  region: 'eu-west-2'
-});
-
 let neoStartTime, neoEndTime = null, elasticStartTime, elasticEndTime = null, ingestFiles;
 
-const pollingInterval = NODE_ENV === 'test' ? 1000 : 1000 * 60;
-
-const isTimestamp = label => !!(label && moment.unix(label).isValid());
-
+const pollingInterval = NODE_ENV === 'test' ? 10 : 1000 * 60;
 let baseArgs = ['--token', KUBE_SERVICE_ACCOUNT_TOKEN];
 
 if (NODE_ENV === 'test') {
   baseArgs = R.concat(['--context', 'acp-notprod_DACC', '-n', 'dacc-entitysearch'], baseArgs);
 }
+
+const isTimestamp = label => !!(label && moment.unix(label).isValid());
 
 const hasTimestampFolders = R.compose(
   R.any(isTimestamp),
@@ -108,9 +99,12 @@ const getIngestFiles = ({ingestName}) => R.compose(
 );
 
 const getJobDuration = (start, end) => {
+  if (!end || !end.diff) return 'timestamp error';
+  
   const seconds = end.diff(start, 'seconds');
   const hours = Math.floor(seconds / 3600) % 24;
   const minutes = Math.floor(seconds / 60) % 60;
+  
   return `${hours}h:${minutes < 10 ? `0${minutes}` : minutes}mins`;
 }
 
@@ -131,53 +125,52 @@ const getPodStatus = R.compose(
 ..######.....##....##.....##.##.....##....##...
 */
 
-function start () {
+function start (waitForManifest) {
   s3.listObjectsV2({Bucket, Prefix: "pending/", Delimiter: ""}, (err, folder) => {
 
     if (err) {
       console.error(JSON.stringify(err, null, 2));
       
-      return setTimeout(start, pollingInterval);
+      return setTimeout(() => start(waitForManifest), pollingInterval);
 
     } else if (!folder || !folder.Contents.length) {
       
-      return setTimeout(start, pollingInterval);
+      return setTimeout(() => start(waitForManifest), pollingInterval);
 
     } else if (!hasTimestampFolders(folder)) {
       
-      return setTimeout(start, pollingInterval);
+      return setTimeout(() => start(waitForManifest), pollingInterval);
 
     } else {
       const ingestParams = getIngestJobParams(folder);
 
       if (!ingestParams) {
         console.error('error in s3 bucket - check folders');
-        return setTimeout(start, pollingInterval);
+        return setTimeout(() => start(waitForManifest), pollingInterval);
       }
       
       ingestFiles = getIngestFiles(ingestParams)(folder);
       
       console.log(`new ${ingestParams.ingestType} ingest detected in folder ${ingestParams.ingestName} - waiting for manifest file...`)
       
-      waitForManifest(ingestParams)
+      waitForManifest(ingestParams, getOldJobs)
     }
   });
 };
 
-function waitForManifest (ingestParams) {
+function waitForManifest (ingestParams, getOldJobs) {
   
   const { ingestName } = ingestParams;
   const manifestPrefix = `pending/${ingestName}/manifest.json`;
 
   s3.listObjectsV2({Bucket, Prefix: manifestPrefix, Delimiter: ""}, (err, {Contents}) => {
     !Contents.length
-      ? setTimeout(() => waitForManifest(ingestParams), pollingInterval)
-      : getOldJobs(ingestParams);
+      ? setTimeout(() => waitForManifest(ingestParams, getOldJobs), pollingInterval)
+      : getOldJobs(ingestParams, deleteOldJobs);
   });
 };
 
-function getOldJobs (ingestParams) {
-
+function getOldJobs (ingestParams, deleteOldJobs) {
   const {ingestType, ingestName} = ingestParams;
   const forIngestType = ingestType === 'incremental' ? new RegExp(/-delta-/) : new RegExp(/-bulk-/);
   
@@ -394,5 +387,8 @@ module.exports = {
   getIngestFiles,
   getJobDuration,
   getPodStatus,
-  start
+  start,
+  waitForManifest,
+  waitForCompletion,
+  getOldJobs
 };

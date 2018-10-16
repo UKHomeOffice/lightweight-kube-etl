@@ -6,10 +6,10 @@ module.exports = function(wallaby) {
         instrument: false
       },
       "src/**/*.js",
-      "!__tests__/*.spec.js",
+      "!**/*.spec.js",
       "!node_modules/**/*.*"
     ],
-    tests: ["__tests__/*.spec.js"],
+    tests: ["**/*.spec.js"],
     env: {
       type: "node"
     },
