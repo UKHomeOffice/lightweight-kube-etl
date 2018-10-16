@@ -1,5 +1,7 @@
-const ingestor = require('../src/ingestor');
-const childProcess = require("child_process");
+jest.mock('child_process');
+
+const ingestor = require('./ingestor');
+const { s3_samples } = require('./__mocks__/s3-client');
 
 const {
   isTimestamp,
@@ -10,69 +12,11 @@ const {
   getStatus,
   getPodStatus,
   getIngestFiles,
-  getJobDuration
+  getJobDuration,
+  getOldJobs
 } = ingestor;
 
 const moment = require('moment');
-
-const s3 = {
-  listObjectsV2: jest.fn().mockImplementation((params, cb) => {
-    return cb(null, sample_s3_ts_folders);
-  })
-};
-
-childProcess.exec = jest.fn().mockImplementation((command, callback) => {
-
-  return callback(null, "exec success", null);
-});
-
-const sample_s3_no_ts_folders = {
-  Contents: [
-    {
-      Key: 'pending/.DS_Store'
-    },
-    {
-      Key: 'pending/manifest.json'
-    }
-  ]
-};
-
-const sample_s3_ts_folders = {
-  Contents: [
-    {
-      Key: 'pending/.DS_Store'
-    },
-    {
-      Key: 'pending/manifest.json'
-    },
-    {
-      Key: 'pending/1538055240/person/person_headers.csv.gz'
-    },
-    {
-      Key: 'pending/1538055240/bulk.txt'
-    },
-    {
-      Key: 'pending/1538055240/manifest.json'
-    },
-    {
-      Key: 'pending/1538055250/person/person_headers.csv.gz'
-    },
-    {
-      Key: 'pending/1538055250/person/person_sample.csv.gz'
-    }
-  ]
-}
-
-const sample_s3_bad_folders = {
-  Contents: [
-    {
-      Key: 'pending/.DS_Store'
-    },
-    {
-      Key: 'pending/1538055240/person/person_headers.csv.gz'
-    }
-  ]
-}
 
 const sample_complete_job = {
   "status": {
@@ -179,19 +123,26 @@ describe('Simple Ingestor Helper Functions', () => {
   });
   
   it('can filter timestamped folders from s3', () => {
-    expect(hasTimestampFolders(sample_s3_no_ts_folders)).toBe(false);
-    expect(hasTimestampFolders(sample_s3_ts_folders)).toBe(true);
+    expect(hasTimestampFolders(s3_samples.no_ts_folders)).toBe(false);
+    expect(hasTimestampFolders(s3_samples.ts_folders)).toBe(true);
   });
 
-  it('extracts the correct folder from a list', () => {
-    const {ingestType, ingestName} = getIngestJobParams(sample_s3_ts_folders);
+  it('extracts the oldest timestamped folder from a list', () => {
+    const {ingestType, ingestName} = getIngestJobParams(s3_samples.ts_folders);
 
     expect(ingestType).toBe('bulk');
     expect(ingestName).toBe('1538055240');
   });
 
+  it('extracts the oldest timestamped folder from a list', () => {
+    const {ingestType, ingestName} = getIngestJobParams(s3_samples.out_of_order_folders);
+
+    expect(ingestType).toBe('incremental');
+    expect(ingestName).toBe('1111');
+  });
+
   it('handles mis-formed folder contents', () => {
-    const response = getIngestJobParams(sample_s3_bad_folders);
+    const response = getIngestJobParams(s3_samples.bad_folders);
 
     expect(response).toBeFalsy();
   });
@@ -230,9 +181,10 @@ describe('Simple Ingestor Helper Functions', () => {
 
     const type = new RegExp(/-delta-/);
 
-    const label = getJobLabels(type)(result);
+    const label = getJobLabels(type);
 
-    expect(label).toEqual(['neo4j-delta-123456', 'elastic-delta-123456']);
+    expect(typeof label).toBe('function');
+    expect(label(result)).toEqual(['neo4j-delta-123456', 'elastic-delta-123456']);
     expect(filterJobs(filterThis)).toBe(false);
     expect(filterJobs(result.items[0])).toBe(true);
   });
@@ -255,7 +207,7 @@ describe('Simple Ingestor Helper Functions', () => {
       ingestName: '1538055250'
     }
 
-    const files = getIngestFiles(params)(sample_s3_ts_folders);
+    const files = getIngestFiles(params)(s3_samples.ts_folders);
 
     expect(files).toEqual(ingest);
   });
@@ -268,6 +220,7 @@ describe('Simple Ingestor Helper Functions', () => {
 
     expect(getJobDuration(start, end)).toBe('1h:30mins');
     expect(getJobDuration(s_zero_pad, e_zero_pad)).toBe('1h:09mins');
+    expect(getJobDuration({}, {})).toBe('timestamp error');
   });
 
   it('should be able to find the status of a pod', () => {
@@ -276,5 +229,12 @@ describe('Simple Ingestor Helper Functions', () => {
 
     expect(pod_ready).toBe(true);
     expect(pod_false_ready).toBe(false);
+  });
+
+  it('should get jobs to delete', done => {
+    getOldJobs({ingestName: '1538055240', ingestType: 'bulk'}, jobs => {
+      expect(jobs.length).toBe(2);
+      done();
+    });
   });
 });
