@@ -369,8 +369,8 @@ function waitForCompletion ({ingestType, ingestName}) {
         const store_ingest_details = {
           ingest: ingestName,
           type: ingestType,
-          load_date: Date.now(),
-          readable_date: moment(new Date()).format('MMM Do HH:mm'),
+          load_date: new Date(),
+          readable_date: moment(new Date()).format('dd MMM yyyy HH:mm'),
           neo_job_duration: getJobDuration(neoStartTime, neoEndTime),
           elastic_job_duration: getJobDuration(elasticStartTime, elasticEndTime),
           total_job_duration: getJobDuration(neoStartTime, ingestEndTime)
