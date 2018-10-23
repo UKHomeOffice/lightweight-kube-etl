@@ -253,12 +253,7 @@ function createBulkJobs (ingestParams, jobs, cb) {
     done => runJob(neo4j, done),
     done => runJob(elastic, done)
   ], err => {
-    if (err) {
-      console.error(err);
-      enterErrorState();
-    } else {
-      cb(ingestParams);
-    }
+    cb(err, ingestParams);
   });
 }
 
@@ -266,7 +261,7 @@ function createDeltaJobs(ingestParams, jobs) {
   async.eachSeries(jobs, runJob, err => {
     if (err) {
       console.error(err);
-      enterErrorState();
+      cb(err);
     } else {
       cb(ingestParams);
     }
@@ -288,7 +283,9 @@ function enterErrorState () {
 .##.......####.##....##.####..######..##.....##
 */
 
-function waitForCompletion ({ingestType, ingestName}) {
+function waitForCompletion (err, {ingestType, ingestName}) {
+  if (err) return enterErrorState();
+
   const complete = moment(neoEndTime).isValid() && moment(elasticEndTime).isValid();
 
   if (!complete) {
@@ -337,5 +334,6 @@ module.exports = {
   checkPodStatus,
   checkJobStatus,
   waitForPods,
-  runJob
+  runJob,
+  createBulkJobs
 };
