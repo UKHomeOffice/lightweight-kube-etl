@@ -31,6 +31,17 @@ const async = require('async');
 const { spawn, exec } = require('child_process');
 const { insert: mongoClient } = require("./mongodb");
 const s3 = require('./s3-client');
+const {
+  isTimestamp,
+  hasTimestampFolders,
+  getIngestJobParams,
+  getJobLabels,
+  filterJobs,
+  getStatus,
+  getIngestFiles,
+  getJobDuration,
+  getPodStatus
+} = require('./helpers');
 
 const { 
   BUCKET: Bucket, 
@@ -46,84 +57,6 @@ let baseArgs = ['--token', KUBE_SERVICE_ACCOUNT_TOKEN];
 if (NODE_ENV === 'test') {
   baseArgs = R.concat(['--context', 'acp-notprod_DACC', '-n', 'dacc-entitysearch'], baseArgs);
 }
-
-/*
-.##.....##.########.##.......########..########.########...######.
-.##.....##.##.......##.......##.....##.##.......##.....##.##....##
-.##.....##.##.......##.......##.....##.##.......##.....##.##......
-.#########.######...##.......########..######...########...######.
-.##.....##.##.......##.......##........##.......##...##.........##
-.##.....##.##.......##.......##........##.......##....##..##....##
-.##.....##.########.########.##........########.##.....##..######.
-*/
-
-const isTimestamp = label => !!(label && moment.unix(label).isValid());
-
-const hasTimestampFolders = R.compose(
-  R.any(isTimestamp),
-  R.map(R.compose(R.head, R.tail, R.split('/'), R.prop('Key'))),
-  R.prop('Contents')
-);
-
-const getIngestJobParams = folder => {
-  const oldestFolder = R.compose(
-    R.head,
-    R.sort((older, newer) => (older[1] > newer[1])),
-    R.filter(R.compose(R.contains(R.__, ["bulk.txt", "incremental.txt"]), R.last)),
-    R.map(R.take(3)),
-    R.map(R.compose(R.split("/"), R.prop("Key"))),
-    R.prop('Contents')
-  )(folder);
-
-  if (!oldestFolder) return;
-
-  return R.compose(
-    R.evolve({ingestType: R.replace(".txt", "")}),
-    R.zipObj(["ingestName", "ingestType"]),
-    R.tail,
-  )(oldestFolder);
-}
-
-const getJobLabels = forIngestType => R.compose(
-  R.filter(R.test(forIngestType)),
-  R.map(R.path(['metadata', 'name'])),
-  R.filter(filterJobs),
-  R.prop('items')
-);
-
-const filterJobs = R.compose(
-  R.gt(R.__, 0),
-  R.length,
-  R.intersection(['neo4j', 'elastic']),
-  R.split('-'),
-  R.pathOr('', ['metadata', 'name']),
-);
-
-const getStatus = R.pathOr(false, ['status', 'succeeded']);
-
-const getIngestFiles = ({ingestName}) => R.compose(
-  R.concat([{Key: `pending/${ingestName}/manifest.json`}, {Key: `pending/${ingestName}`}]),
-  R.filter(R.compose(R.contains(ingestName), R.split('/'), R.prop('Key'))),
-  R.map(R.pick(['Key'])),
-  R.prop('Contents')
-);
-
-const getJobDuration = (start, end) => {
-  if (!end || !end.diff) return 'timestamp error';
-  
-  const seconds = end.diff(start, 'seconds');
-  const hours = Math.floor(seconds / 3600) % 24;
-  const minutes = Math.floor(seconds / 60) % 60;
-  
-  return `${hours}h:${minutes < 10 ? `0${minutes}` : minutes}mins`;
-}
-
-const getPodStatus = R.compose(
-  R.prop('ready'),
-  R.head,
-  R.filter(R.propEq('name', 'build')),
-  R.pathOr([], ['status', 'containerStatuses'])
-)
 
 /*
 ..######..########....###....########..########
@@ -192,11 +125,11 @@ function getOldJobs (ingestParams, deleteOldJobs, enterErrorState) {
 
     const jobsToDelete = getJobLabels(forIngestType)(JSON.parse(stdout));
 
-    deleteOldJobs(ingestParams, jobsToDelete);
+    deleteOldJobs(ingestParams, jobsToDelete, createBulkJobs, createDeltaJobs);
   });
 }
 
-function deleteOldJobs ({ingestType, ingestName}, jobsToDelete) {
+function deleteOldJobs ({ingestType, ingestName}, jobsToDelete, createBulkJobs, createDeltaJobs) {
   const jobType = ingestType === 'incremental' ? 'delta' : ingestType;
   
   const currentNeoJob = R.pipe(R.filter( R.startsWith(`neo4j-${jobType}`)), R.head)(jobsToDelete);
@@ -241,29 +174,31 @@ function deleteOldJobs ({ingestType, ingestName}, jobsToDelete) {
 */
 
 function checkPodStatus (podName, podReady) {
-  const poll = () => checkPodStatus(podName, podReady);
-  
   exec(`kubectl ${R.join(' ', baseArgs)} get pods ${podName} -o json`, (err, stdout, stderr) => {
-    if (err || stderr) {
-      setTimeout(poll, pollingInterval);
+    let ready;
+    
+    try { ready = getPodStatus(JSON.parse(stdout)) }
+    catch(err) { ready = false }
+    
+    if (err || stderr || !ready) {
+      setTimeout(() => checkPodStatus(podName, podReady), pollingInterval);
     } else {
-      const ready = getPodStatus(JSON.parse(stdout));
-  
-      ready ? podReady() : setTimeout(poll, pollingInterval);
+      podReady();
     }
   });
 }
 
 function checkJobStatus (jobName, jobComplete) {
-  const poll = () => checkJobStatus(jobName, jobComplete);
-
   exec(`kubectl ${R.join(' ', baseArgs)} get jobs ${jobName} -o json`, (err, stdout, stderr) => {
-    if (err || stderr) {
-      setTimeout(poll, pollingInterval);
+    let ready;
+    
+    try { ready = getStatus(JSON.parse(stdout)) }
+    catch(err) { ready = false }
+ 
+    if (err || stderr || !ready) {
+      setTimeout(() => checkJobStatus (jobName, jobComplete), pollingInterval);
     } else {
-      const ready = getStatus(JSON.parse(stdout));
-
-      ready ? jobComplete() : setTimeout(poll, pollingInterval);
+      jobComplete();
     }
   });
 }
@@ -389,17 +324,11 @@ function waitForCompletion ({ingestType, ingestName}) {
 }
 
 module.exports = {
-  isTimestamp,
-  hasTimestampFolders,
-  getIngestJobParams,
-  getJobLabels,
-  filterJobs,
-  getStatus,
-  getIngestFiles,
-  getJobDuration,
-  getPodStatus,
   start,
   waitForManifest,
   waitForCompletion,
-  getOldJobs
+  getOldJobs,
+  deleteOldJobs,
+  checkPodStatus,
+  checkJobStatus
 };

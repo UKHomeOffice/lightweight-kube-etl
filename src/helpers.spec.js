@@ -68,7 +68,7 @@ const pod_status_not_ready = {
     "containerStatuses": [
       {
         "name": "build",
-        "ready": true,
+        "ready": false,
         "restartCount": 0,
         "state": {
             "running": {
