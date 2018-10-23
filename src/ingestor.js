@@ -158,8 +158,8 @@ function deleteOldJobs ({ingestType, ingestName}, jobsToDelete, createBulkJobs, 
   
   deleteJobs.on('exit', () => {
     jobType === 'bulk'
-    ? createBulkJobs({ingestType, ingestName}, jobs)
-    : createDeltaJobs({ingestType, ingestName}, jobs);
+    ? createBulkJobs({ingestType, ingestName}, jobs, waitForCompletion)
+    : createDeltaJobs({ingestType, ingestName}, jobs, waitForCompletion);
   });
 }
 
@@ -179,7 +179,7 @@ function checkPodStatus (podName, podReady) {
     
     try { ready = getPodStatus(JSON.parse(stdout)) }
     catch(err) { ready = false }
-    
+
     if (err || stderr || !ready) {
       setTimeout(() => checkPodStatus(podName, podReady), pollingInterval);
     } else {
@@ -201,15 +201,6 @@ function checkJobStatus (jobName, jobComplete) {
       jobComplete();
     }
   });
-}
-
-const onJobComplete = ingestParams => err => {
-  if (err) {
-    console.error(err);
-    enterErrorState();
-  } else {
-    waitForCompletion(ingestParams)
-  }
 }
 
 function waitForPods (job, next) {
@@ -255,17 +246,31 @@ function runJob (job, callback) {
   });
 }
 
-function createBulkJobs (ingestParams, jobs) {
+function createBulkJobs (ingestParams, jobs, cb) {
   const [neo4j, elastic] = jobs;
 
   async.parallel([
     done => runJob(neo4j, done),
     done => runJob(elastic, done)
-  ], onJobComplete(ingestParams));
+  ], err => {
+    if (err) {
+      console.error(err);
+      enterErrorState();
+    } else {
+      cb(ingestParams);
+    }
+  });
 }
 
 function createDeltaJobs(ingestParams, jobs) {
-  async.eachSeries(jobs, runJob, onJobComplete(ingestParams));
+  async.eachSeries(jobs, runJob, err => {
+    if (err) {
+      console.error(err);
+      enterErrorState();
+    } else {
+      cb(ingestParams);
+    }
+  });
 }
 
 function enterErrorState () {
@@ -330,5 +335,7 @@ module.exports = {
   getOldJobs,
   deleteOldJobs,
   checkPodStatus,
-  checkJobStatus
+  checkJobStatus,
+  waitForPods,
+  runJob
 };
