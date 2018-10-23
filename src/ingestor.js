@@ -47,6 +47,16 @@ if (NODE_ENV === 'test') {
   baseArgs = R.concat(['--context', 'acp-notprod_DACC', '-n', 'dacc-entitysearch'], baseArgs);
 }
 
+/*
+.##.....##.########.##.......########..########.########...######.
+.##.....##.##.......##.......##.....##.##.......##.....##.##....##
+.##.....##.##.......##.......##.....##.##.......##.....##.##......
+.#########.######...##.......########..######...########...######.
+.##.....##.##.......##.......##........##.......##...##.........##
+.##.....##.##.......##.......##........##.......##....##..##....##
+.##.....##.########.########.##........########.##.....##..######.
+*/
+
 const isTimestamp = label => !!(label && moment.unix(label).isValid());
 
 const hasTimestampFolders = R.compose(
@@ -166,14 +176,14 @@ function waitForManifest (ingestParams, getOldJobs) {
   s3.listObjectsV2({Bucket, Prefix: manifestPrefix, Delimiter: ""}, (err, {Contents}) => {
     !Contents.length
       ? setTimeout(() => waitForManifest(ingestParams, getOldJobs), pollingInterval)
-      : getOldJobs(ingestParams, deleteOldJobs);
+      : getOldJobs(ingestParams, deleteOldJobs, enterErrorState);
   });
 };
 
-function getOldJobs (ingestParams, deleteOldJobs) {
+function getOldJobs (ingestParams, deleteOldJobs, enterErrorState) {
   const {ingestType, ingestName} = ingestParams;
   const forIngestType = ingestType === 'incremental' ? new RegExp(/-delta-/) : new RegExp(/-bulk-/);
-  
+
   exec(`kubectl ${baseArgs.join(' ')} get jobs -o json`, (err, stdout, stderr) => {
     if (err) {
       console.error(err);
@@ -324,6 +334,7 @@ function createDeltaJobs(ingestParams, jobs) {
 }
 
 function enterErrorState () {
+  if (process.env.NODE_ENV === 'test') return;
   setTimeout(enterErrorState, pollingInterval);
 }
 
