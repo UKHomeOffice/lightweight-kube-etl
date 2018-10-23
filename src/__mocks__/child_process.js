@@ -52,19 +52,28 @@ const get_job_status = jest.fn()
   .mockReturnValueOnce(running_job)
   .mockReturnValue(complete_job);
 
-function getOutput (cmd) {
+const get_run_job = jest.fn()
+  .mockReturnValueOnce(1)
+  .mockReturnValueOnce(0)
+
+function getOutput (command) {
+  const cmd = command.replace("kubectl --context acp-notprod_DACC -n dacc-entitysearch --token MOCK_TOKEN ", "")
   switch(cmd) {
-    case "kubectl --context acp-notprod_DACC -n dacc-entitysearch --token MOCK_TOKEN get jobs -o json":
+    case "get jobs -o json":
       return {stdout: get_jobs_to_delete(), stderr: null};
-    case "kubectl --context acp-notprod_DACC -n dacc-entitysearch --token MOCK_TOKEN get pods neo4j-0 -o json":
+    case "get pods neo4j-0 -o json":
       return {stdout: get_pod_status(), stderr: null};
-    case "kubectl --context acp-notprod_DACC -n dacc-entitysearch --token MOCK_TOKEN get jobs neo4j-delta-1538055240 -o json":
+    case "get pods neo4j-1 -o json":
+      return {stdout: get_pod_status(), stderr: null};
+    case "get jobs neo4j-delta-1538055240 -o json":
       return {stdout: get_job_status(), stderr: null};
+    case "create job neo4j-delta-1538055240 --from cronjob/neo4j-delta":
+      return {exitcode: get_run_job() };
   }
 }
 
-function exec (cmd, callback) {
-  const {stdout, stderr} = getOutput(cmd);
+function exec (command, callback) {
+  const {stdout, stderr} = getOutput(command);
 
   if (stdout instanceof Error) {
     callback(stdout);
@@ -75,8 +84,8 @@ function exec (cmd, callback) {
 
 function spawn (cmd, cmd_args) {
   const _spawn = new Spawn();
-
-  setTimeout(() => _spawn.emit('exit'), 10);
+  const {exitcode} = getOutput(cmd + ' ' + cmd_args.join(' '));
+  setTimeout(() => _spawn.emit('exit', exitcode), 10);
   return _spawn;
 }
 
