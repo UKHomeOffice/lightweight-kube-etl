@@ -1,4 +1,6 @@
 const child_process = jest.genMockFromModule('child_process');
+const EventEmitter = require('events');
+class Spawn extends EventEmitter {};
 const {
   complete_job,
   running_job,
@@ -39,27 +41,43 @@ const get_jobs_to_delete = jest.fn()
     ]
   });
 
-function getResponse (cmd) {
+const get_pod_status = jest.fn()
+  .mockReturnValueOnce(new Error('kubectl get pods error'))
+  .mockReturnValueOnce(pod_not_ready)
+  .mockReturnValueOnce(pod_status_not_ready)
+  .mockReturnValue(pod_status_ready);
+
+const get_job_status = jest.fn()
+  .mockReturnValueOnce(new Error('kubectl get jobs error'))
+  .mockReturnValueOnce(running_job)
+  .mockReturnValue(complete_job);
+
+function getOutput (cmd) {
   switch(cmd) {
     case "kubectl --context acp-notprod_DACC -n dacc-entitysearch --token MOCK_TOKEN get jobs -o json":
-      return get_jobs_to_delete();
+      return {stdout: get_jobs_to_delete(), stderr: null};
+    case "kubectl --context acp-notprod_DACC -n dacc-entitysearch --token MOCK_TOKEN get pods neo4j-0 -o json":
+      return {stdout: get_pod_status(), stderr: null};
+    case "kubectl --context acp-notprod_DACC -n dacc-entitysearch --token MOCK_TOKEN get jobs neo4j-delta-1538055240 -o json":
+      return {stdout: get_job_status(), stderr: null};
   }
 }
 
 function exec (cmd, callback) {
-  const response = getResponse(cmd);
+  const {stdout, stderr} = getOutput(cmd);
 
-  if (response instanceof Error) {
-    callback(response);
+  if (stdout instanceof Error) {
+    callback(stdout);
   } else {
-    const stdout = JSON.stringify(response);
-    const stderr = JSON.stringify([]);
-    callback(null, stdout, stderr);
+    callback(null, JSON.stringify(stdout), stderr ? JSON.stringify(stderr) : null);
   }
 }
 
-function spawn (cmd, callback) {
-  callback(null, new Buffer("hello you"));
+function spawn (cmd, cmd_args) {
+  const _spawn = new Spawn();
+
+  setTimeout(() => _spawn.emit('exit'), 10);
+  return _spawn;
 }
 
 child_process.exec = jest.fn().mockImplementation(exec);

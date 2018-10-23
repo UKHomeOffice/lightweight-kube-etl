@@ -1,6 +1,16 @@
 const R = require('ramda');
 const moment = require('moment');
 
+/*
+.##.....##.########.##.......########..########.########...######.
+.##.....##.##.......##.......##.....##.##.......##.....##.##....##
+.##.....##.##.......##.......##.....##.##.......##.....##.##......
+.#########.######...##.......########..######...########...######.
+.##.....##.##.......##.......##........##.......##...##.........##
+.##.....##.##.......##.......##........##.......##....##..##....##
+.##.....##.########.########.##........########.##.....##..######.
+*/
+
 const isTimestamp = label => !!(label && moment.unix(label).isValid());
 
 const hasTimestampFolders = R.compose(
@@ -63,7 +73,7 @@ const getJobDuration = (start, end) => {
 }
 
 const getPodStatus = R.compose(
-  R.prop('ready'),
+  R.propOr(false, 'ready'),
   R.head,
   R.filter(R.propEq('name', 'build')),
   R.pathOr([], ['status', 'containerStatuses'])
