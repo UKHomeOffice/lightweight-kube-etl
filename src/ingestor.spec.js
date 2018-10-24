@@ -18,7 +18,8 @@ const {
   createBulkJobs,
   createDeltaJobs,
   enterErrorState,
-  waitForCompletion
+  waitForCompletion,
+  start
 } = ingestor;
 
 describe('Kubectl - getOldJobs', () => {
@@ -347,4 +348,15 @@ describe('Kubectl - waitForCompletion', () => {
       done();
     });
   });
-})
+});
+
+describe('Error states', () => {
+  it('start should enter an error state', () => {
+    expect(start(new Error)).toBe(undefined);
+  });
+
+  it('waitForCompletion should enter an error state', () => {
+    const ingestParams = {ingestName: '1538055555', ingestType: 'incremental'};
+    expect(waitForCompletion(new Error, ingestParams, {}, noop)).toBe(true);
+  });
+});
