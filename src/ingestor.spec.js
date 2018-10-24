@@ -1,6 +1,13 @@
 jest.mock('child_process');
+jest.mock('./s3-client');
+jest.mock('./mongodb');
+const moment = require('moment');
 const child_process = require('child_process');
+const { insert: mongoClient } = require("./mongodb");
 const ingestor = require('./ingestor');
+const { getIngestFiles } = require('./helpers');
+const { s3_samples } = require('./__mocks__/s3-client');
+const noop = () => {};
 const {
   getOldJobs,
   deleteOldJobs,
@@ -13,9 +20,6 @@ const {
   enterErrorState,
   waitForCompletion
 } = ingestor;
-
-const moment = require('moment');
-const noop = () => {};
 
 describe('Kubectl - getOldJobs', () => {
   it('should, on error, enter an error state', done => {
@@ -290,7 +294,57 @@ describe('Kubectl - createDeltaJobs', () => {
 });
 
 describe('Kubectl - waitForCompletion', () => {
-  it('should wait for jobs to complete and', () => {
-    expect(enterErrorState()).toBeTruthy();
-  })
+  it('should wait for completion and handle errors', done => {
+    const _files = getIngestFiles({ingestName: '1538055240', ingestType: 'bulk'})(s3_samples.ts_folders);
+    const timer = {
+      isComplete: jest.fn()
+        .mockReturnValueOnce(false)
+        .mockReturnValue(true),
+      getIngestFiles: jest.fn()
+        .mockReturnValue(_files)
+    };
+    
+    const ingestParams = {ingestName: '1538055555', ingestType: 'incremental'};
+
+    waitForCompletion(null, ingestParams, timer, err => {
+      expect(err instanceof Error).toBe(true);
+      done();
+    });
+  });
+
+  it('should wait for completion and handle errors', done => {
+    const _files = getIngestFiles({ingestName: '1538055240', ingestType: 'bulk'})(s3_samples.ts_folders);
+    
+    const timer = {
+      isComplete: jest.fn().mockReturnValue(true),
+      getIngestFiles: jest.fn().mockReturnValue(_files),
+      getNeoStart: () => moment('1970-01-01 13:00'),
+      getNeoEnd: () => moment('1970-01-01 15:15'),
+      getElasticStart: () => moment('1970-01-01 13:30'),
+      getElasticEnd: () => moment('1970-01-01 14:35'),
+      reset: jest.fn()
+    };
+    
+    const ingestParams = {ingestName: '1538055555', ingestType: 'incremental'};
+
+    const expected_output = {
+      "ingest": "1538055555",
+      "type": "incremental",
+      "load_date": 1540394977882,
+      "readable_date": "Oct 24th 16:29",
+      "neo_job_duration": "2h:15mins",
+      "elastic_job_duration": "1h:05mins",
+      "total_job_duration": "2h:29mins"
+    };
+
+    waitForCompletion(null, ingestParams, timer, err => {
+      const insert = mongoClient.mock.calls[0][0];
+      const fields = Object.keys(insert);
+      expect(fields).toEqual(Object.keys(expected_output));
+      expect(insert.type).toEqual(expected_output.type);
+      expect(insert.neo_job_duration).toEqual(expected_output.neo_job_duration);
+      expect(insert.elastic_job_duration).toEqual(expected_output.elastic_job_duration);
+      done();
+    });
+  });
 })

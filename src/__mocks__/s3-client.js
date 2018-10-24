@@ -106,6 +106,10 @@ const manifest_folders = jest.fn()
   .mockReturnValueOnce(s3_samples.ts_folders_no_manifest)
   .mockReturnValueOnce(s3_samples.ts_folders);
 
+const deleteObjects = jest.fn()
+  .mockReturnValueOnce(new Error('aws delete error'))
+  .mockReturnValue(true);
+
 module.exports = {
   listObjectsV2: jest.fn().mockImplementation(({Bucket, Prefix}, callback) => {
     let reply;
@@ -117,5 +121,14 @@ module.exports = {
 
     reply instanceof Error ? callback(reply) : callback(null, reply);
   }),
-  s3_samples: s3_samples
+  s3_samples: s3_samples,
+  deleteObjects: jest.fn().mockImplementation(({Bucket, Delete}, callback) => {
+    const reply = deleteObjects();
+
+    if (reply instanceof Error) {
+      callback(reply);
+    } else {
+      callback(null, reply);
+    }
+  })
 };

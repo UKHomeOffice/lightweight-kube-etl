@@ -70,36 +70,42 @@ if (NODE_ENV === 'test') {
 */
 
 function start (waitForManifest) {
-  s3.listObjectsV2({Bucket, Prefix: "pending/", Delimiter: ""}, (err, folder) => {
-
-    if (err) {
-      console.error(JSON.stringify(err, null, 2));
-      
-      return setTimeout(() => start(waitForManifest), pollingInterval);
-
-    } else if (!folder || !folder.Contents.length) {
-      
-      return setTimeout(() => start(waitForManifest), pollingInterval);
-
-    } else if (!hasTimestampFolders(folder)) {
-      
-      return setTimeout(() => start(waitForManifest), pollingInterval);
-
-    } else {
-      const ingestParams = getIngestJobParams(folder);
-
-      if (!ingestParams) {
-        console.error('error in s3 bucket - check folders');
+  if (waitForManifest instanceof Error) {
+    console.error(err);
+    enterErrorState();
+  } else {
+    s3.listObjectsV2({Bucket, Prefix: "pending/", Delimiter: ""}, (err, folder) => {
+  
+      if (err) {
+        console.error(JSON.stringify(err, null, 2));
+        
         return setTimeout(() => start(waitForManifest), pollingInterval);
+  
+      } else if (!folder || !folder.Contents.length) {
+        
+        return setTimeout(() => start(waitForManifest), pollingInterval);
+  
+      } else if (!hasTimestampFolders(folder)) {
+        
+        return setTimeout(() => start(waitForManifest), pollingInterval);
+  
+      } else {
+        const ingestParams = getIngestJobParams(folder);
+  
+        if (!ingestParams) {
+          console.error('error in s3 bucket - check folders');
+          return setTimeout(() => start(waitForManifest), pollingInterval);
+        }
+        
+        const ingestFiles = getIngestFiles(ingestParams)(folder);
+        timer.setIngestFiles(ingestFiles);
+        
+        console.log(`new ${ingestParams.ingestType} ingest detected in folder ${ingestParams.ingestName} - waiting for manifest file...`)
+        
+        waitForManifest(ingestParams, getOldJobs)
       }
-      
-      ingestFiles = getIngestFiles(ingestParams)(folder);
-      
-      console.log(`new ${ingestParams.ingestType} ingest detected in folder ${ingestParams.ingestName} - waiting for manifest file...`)
-      
-      waitForManifest(ingestParams, getOldJobs)
-    }
-  });
+    });
+  }
 };
 
 function waitForManifest (ingestParams, getOldJobs) {
@@ -250,13 +256,13 @@ function createBulkJobs (ingestParams, jobs, waitForCompletion) {
     done => runJob(neo4j, done),
     done => runJob(elastic, done)
   ], err => {
-    waitForCompletion(err, ingestParams, timer);
+    waitForCompletion(err, ingestParams, timer, start);
   });
 }
 
 function createDeltaJobs(ingestParams, jobs, waitForCompletion) {
   async.eachSeries(jobs, runJob, err => {
-    waitForCompletion(err, ingestParams, timer);
+    waitForCompletion(err, ingestParams, timer, start);
   });
 }
 
@@ -275,18 +281,18 @@ function enterErrorState () {
 .##.......####.##....##.####..######..##.....##
 */
 
-function waitForCompletion (err, {ingestType, ingestName}, timer) {
+function waitForCompletion (err, {ingestType, ingestName}, timer, start) {
   if (err) return enterErrorState();
 
   const complete = timer.isComplete();
 
   if (!complete) {
-    setTimeout(() => waitForCompletion(null, {ingestType, ingestName}, timer), pollingInterval);
+    setTimeout(() => waitForCompletion(null, {ingestType, ingestName}, timer, start), pollingInterval);
   } else {
     const deleteParams = {
       Bucket,
       Delete: {
-        Objects: ingestFiles,
+        Objects: timer.getIngestFiles(),
         Quiet: true
       }
     }
@@ -296,7 +302,7 @@ function waitForCompletion (err, {ingestType, ingestName}, timer) {
      
       if (err) {
         console.error(`${ingestEndTime.format('MMM Do HH:mm')}: ${JSON.stringify(err, null, 2)}`);
-        enterErrorState();
+        start(err);
       } else {
         
         const store_ingest_details = {
@@ -311,7 +317,7 @@ function waitForCompletion (err, {ingestType, ingestName}, timer) {
         
         console.log(`${ingestEndTime.format('MMM Do HH:mm')}: ${JSON.stringify(store_ingest_details, null, 4)}`);
 
-        timer = new Times();
+        timer.reset();
 
         mongoClient(store_ingest_details).then(() => start(waitForCompletion));
       }
@@ -331,6 +337,5 @@ module.exports = {
   runJob,
   createBulkJobs,
   createDeltaJobs,
-  enterErrorState,
-  waitForCompletion
+  enterErrorState
 };

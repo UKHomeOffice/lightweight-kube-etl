@@ -256,6 +256,47 @@ describe('Times', () => {
 
     expect(times.isComplete()).toBe(true);
   });
+
+  it('should hold the ingestFile list', () => {
+    const times = new Times();
+    const _files = getIngestFiles({ingestName: '1538055240', ingestType: 'bulk'})(s3_samples.ts_folders);
+    times.setIngestFiles(_files);
+
+    const files = times.getIngestFiles();
+
+    const expected_files = [
+      { Key: 'pending/1538055240/manifest.json' },
+      { Key: 'pending/1538055240' },
+      { Key: 'pending/1538055240/person/person_headers.csv.gz' },
+      { Key: 'pending/1538055240/bulk.txt' },
+      { Key: 'pending/1538055240/manifest.json' }
+    ];
+  
+    expect(files.length).toBe(5);
+    expect(files).toEqual(expected_files);
+  });
+
+  it('should be easy to reset', () => {
+    const timer = new Times();
+
+    timer.neoStart = moment(new Date());
+    timer.neoEnd = moment(new Date());
+    timer.elasticStart = moment(new Date());
+    timer.elasticEnd = moment(new Date());
+    timer.ingestFiles = [{1:"1"}, {2:"2"}];
+
+    expect(timer.getNeoStart() instanceof moment).toBe(true);
+    expect(timer.getElasticStart() instanceof moment).toBe(true);
+    expect(timer.getIngestFiles().length).toBe(2);
+
+    timer.reset();
+
+    expect(timer.getNeoStart() instanceof moment).toBe(false);
+    expect(timer.getElasticStart() instanceof moment).toBe(false);
+    expect(timer.getNeoEnd()).toBe(null);
+    expect(timer.getElasticEnd()).toBe(null);
+    expect(timer.getIngestFiles()).toBe(null);
+  })
 })
 
 module.exports = {

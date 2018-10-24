@@ -85,6 +85,7 @@ class Times {
     this.neoEnd = null;
     this.elasticStart = null;
     this.elasticEnd = null;
+    this.ingestFiles = null;
   }
 
   setNeoStart () { this.neoStart = moment(new Date()); }
@@ -97,7 +98,18 @@ class Times {
   setElasticEnd () { this.elasticEnd = moment(new Date()); }
   getElasticEnd () { return this.elasticEnd; }
 
+  setIngestFiles (files) { this.ingestFiles = files; }
+  getIngestFiles () { return this.ingestFiles; }
+
   isComplete () { return moment(this.neoEnd).isValid() && moment(this.elasticEnd).isValid() }
+
+  reset () {
+    this.neoStart = null;
+    this.neoEnd = null;
+    this.elasticStart = null;
+    this.elasticEnd = null;
+    this.ingestFiles = null;
+  }
 }
 
 module.exports = {
