@@ -10,7 +10,8 @@ const {
   getStatus,
   getIngestFiles,
   getJobDuration,
-  getPodStatus
+  getPodStatus,
+  Times
 } = require('./helpers');
 
 const complete_job = {
@@ -226,6 +227,36 @@ describe('Helper Functions', () => {
     expect(pod_false_ready).toBe(false);
   });
 });
+
+describe('Times', () => {
+  it('should initate with no times set', () => {
+    const times = new Times();
+    expect(times.getNeoStart()).toBe(null);
+    expect(times.getElasticStart()).toBe(null);
+    expect(times.getNeoEnd()).toBe(null);
+    expect(times.getElasticEnd()).toBe(null);
+  });
+
+  it('should be able to get/set a time', () => {
+    const times = new Times();
+
+    times.setNeoStart();
+
+    const time = times.getNeoStart();
+
+    expect(moment(time).isValid()).toBe(true);
+    expect(time instanceof moment).toBe(true);
+  });
+
+  it('should hold the completed state', () => {
+    const times = new Times();
+
+    times.setNeoEnd();
+    times.setElasticEnd();
+
+    expect(times.isComplete()).toBe(true);
+  });
+})
 
 module.exports = {
   complete_job,

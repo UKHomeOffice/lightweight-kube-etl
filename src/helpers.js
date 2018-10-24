@@ -79,6 +79,27 @@ const getPodStatus = R.compose(
   R.pathOr([], ['status', 'containerStatuses'])
 )
 
+class Times {
+  constructor () {
+    this.neoStart = null;
+    this.neoEnd = null;
+    this.elasticStart = null;
+    this.elasticEnd = null;
+  }
+
+  setNeoStart () { this.neoStart = moment(new Date()); }
+  getNeoStart () { return this.neoStart; }
+  setNeoEnd () { this.neoEnd = moment(new Date()); }
+  getNeoEnd () { return this.neoEnd; }
+
+  setElasticStart () { this.elasticStart = moment(new Date()); }
+  getElasticStart () { return this.elasticStart; }
+  setElasticEnd () { this.elasticEnd = moment(new Date()); }
+  getElasticEnd () { return this.elasticEnd; }
+
+  isComplete () { return moment(this.neoEnd).isValid() && moment(this.elasticEnd).isValid() }
+}
+
 module.exports = {
   isTimestamp,
   hasTimestampFolders,
@@ -88,5 +109,6 @@ module.exports = {
   getStatus,
   getIngestFiles,
   getJobDuration,
-  getPodStatus
+  getPodStatus,
+  Times
 }
