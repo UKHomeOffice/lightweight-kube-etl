@@ -71,7 +71,6 @@ if (NODE_ENV === 'test') {
 
 function start (waitForManifest) {
   if (waitForManifest instanceof Error) {
-    console.error(err);
     enterErrorState();
   } else {
     s3.listObjectsV2({Bucket, Prefix: "pending/", Delimiter: ""}, (err, folder) => {
