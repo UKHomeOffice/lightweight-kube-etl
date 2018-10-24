@@ -32,17 +32,9 @@ const { spawn, exec } = require('child_process');
 const { insert: mongoClient } = require("./mongodb");
 const s3 = require('./s3-client');
 const {
-<<<<<<< HEAD
-  isTimestamp,
   hasTimestampFolders,
   getIngestJobParams,
   getJobLabels,
-  filterJobs,
-=======
-  hasTimestampFolders,
-  getIngestJobParams,
-  getJobLabels,
->>>>>>> edee90d9bb8a0443882ead80d61db5ea2069a26d
   getStatus,
   getIngestFiles,
   getJobDuration,
