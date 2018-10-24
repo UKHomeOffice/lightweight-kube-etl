@@ -8,7 +8,10 @@ const {
   checkJobStatus,
   waitForPods,
   runJob,
-  createBulkJobs
+  createBulkJobs,
+  createDeltaJobs,
+  enterErrorState,
+  waitForCompletion
 } = ingestor;
 
 const moment = require('moment');
@@ -105,7 +108,7 @@ describe('Kubectl - deleteOldJobs', () => {
 });
 
 describe('Kubectl - checkPodStatus', () => {
-  beforeEach(child_process.exec.mockClear);
+  beforeAll(child_process.exec.mockClear);
 
   it('should wait for a pod to be in a ready state', done => {    
     checkPodStatus('neo4j-0', () => {
@@ -114,12 +117,18 @@ describe('Kubectl - checkPodStatus', () => {
     });
   });
 
+});
+
+describe('Kubectl - checkJobStatus', () => {
+  beforeAll(child_process.exec.mockClear);
+
   it('should wait for a job to finish', done => {    
     checkJobStatus('neo4j-delta-1538055240', () => {
-      expect(child_process.exec.mock.calls.length).toBe(3);
+      expect(child_process.exec.mock.calls.length).toBe(4);
       done();
     });
   });
+
 });
 
 describe('Kubectl - waitForPods', () => {
@@ -180,9 +189,7 @@ describe('Kubectl - runJob', () => {
   });
 });
 
-describe.only('Kubectl - createBulkJobs', () => {
-  beforeAll(child_process.spawn.mockClear);
-
+describe('Kubectl - createBulkJobs', () => {
   const bulkjobs = [
     {
       db: 'neo4j',
@@ -231,3 +238,59 @@ describe.only('Kubectl - createBulkJobs', () => {
     });
   })
 });
+
+describe('Kubectl - createDeltaJobs', () => {
+  const deltajobs = [
+    {
+      db: 'neo4j',
+      name: 'neo4j-delta-1538055555',
+      cronJobName: 'neo4j-delta',
+      pods: [ 'neo4j-0', 'neo4j-1' ] 
+    },
+    {
+      db: 'elastic',
+      name: 'elastic-delta-1538055555',
+      cronJobName: 'elastic-delta',
+      pods: [ 'elasticsearch-0', 'elasticsearch-1' ]
+    }
+  ];
+
+  it('should handle errors', done => {
+    const ingestParams = {ingestName: '1538055555', ingestType: 'incremental'};
+
+    createDeltaJobs(ingestParams, deltajobs, err => {
+      expect(err instanceof Error).toBe(true);
+      done();
+    });
+  })
+
+  it('should create bulk jobs and trigger them', done => {
+    const ingestParams = {ingestName: '1538055555', ingestType: 'incremental'};
+    const console_spy = jest.spyOn(console, 'log').mockImplementation(noop);
+    
+    createDeltaJobs(ingestParams, deltajobs, (err, _ingestParams) => {
+      expect(ingestParams).toEqual(_ingestParams);
+
+      const logs = console_spy.mock.calls.map(([msg]) => {
+        return msg.split(': ')[1];
+      });
+
+      const expected_logs = [
+        "neo4j-delta-1538055555 triggered :)",
+        "elastic-delta-1538055555 triggered :)",
+        "neo4j-delta-1538055555 pods ready",
+        "elastic-delta-1538055555 pods ready"
+      ]
+
+      expect(logs.every(log => expected_logs.indexOf(log) > -1)).toBe(true);
+      console.log.mockRestore();
+      done();
+    });
+  })
+});
+
+describe('Kubectl - waitForCompletion', () => {
+  it('should wait for jobs to complete and', () => {
+    expect(enterErrorState()).toBeTruthy();
+  })
+})

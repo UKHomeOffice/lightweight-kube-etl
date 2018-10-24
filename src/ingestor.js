@@ -40,7 +40,8 @@ const {
   getStatus,
   getIngestFiles,
   getJobDuration,
-  getPodStatus
+  getPodStatus,
+  Times
 } = require('./helpers');
 
 const { 
@@ -49,7 +50,7 @@ const {
   NODE_ENV = 'production'
 } = process.env;
 
-let neoStartTime, neoEndTime = null, elasticStartTime, elasticEndTime = null, ingestFiles;
+let timer = new Times();
 
 const pollingInterval = NODE_ENV === 'test' ? 10 : 1000 * 60;
 let baseArgs = ['--token', KUBE_SERVICE_ACCOUNT_TOKEN];
@@ -191,7 +192,7 @@ function checkPodStatus (podName, podReady) {
 function checkJobStatus (jobName, jobComplete) {
   exec(`kubectl ${R.join(' ', baseArgs)} get jobs ${jobName} -o json`, (err, stdout, stderr) => {
     let ready;
-    
+
     try { ready = getStatus(JSON.parse(stdout)) }
     catch(err) { ready = false }
  
@@ -222,10 +223,8 @@ function runJob (job, callback) {
         next(err);
       });
     },
-    next => {      
-      const startTime = moment(new Date());
-  
-      job.db === 'neo4j' ? neoStartTime = startTime : elasticStartTime = startTime;
+    next => {        
+      job.db === 'neo4j' ? timer.setNeoStart() : timer.setElasticStart();
 
       console.log(`${moment(new Date()).format('MMM Do HH:mm')}: ${job.name} triggered :)`);
       
@@ -235,41 +234,34 @@ function runJob (job, callback) {
     next => waitForPods(job, next) // wait for the updates to roll through the cluster
   ], err => {
     if (!err) {
-      const endTime = moment(new Date());
-                
-      job.db === 'neo4j' ? neoEndTime = endTime : elasticEndTime = endTime;
+      job.db === 'neo4j' ? timer.setNeoEnd() : timer.setElasticEnd();
   
-      console.log(`${endTime.format('MMM Do HH:mm')}: ${job.name} pods ready`);
+      console.log(`${moment(new Date()).format('MMM Do HH:mm')}: ${job.name} pods ready`);
     }
 
     callback(err);
   });
 }
 
-function createBulkJobs (ingestParams, jobs, cb) {
+function createBulkJobs (ingestParams, jobs, waitForCompletion) {
   const [neo4j, elastic] = jobs;
 
   async.parallel([
     done => runJob(neo4j, done),
     done => runJob(elastic, done)
   ], err => {
-    cb(err, ingestParams);
+    waitForCompletion(err, ingestParams, timer);
   });
 }
 
-function createDeltaJobs(ingestParams, jobs) {
+function createDeltaJobs(ingestParams, jobs, waitForCompletion) {
   async.eachSeries(jobs, runJob, err => {
-    if (err) {
-      console.error(err);
-      cb(err);
-    } else {
-      cb(ingestParams);
-    }
+    waitForCompletion(err, ingestParams, timer);
   });
 }
 
 function enterErrorState () {
-  if (process.env.NODE_ENV === 'test') return;
+  if (process.env.NODE_ENV === 'test') return true;
   setTimeout(enterErrorState, pollingInterval);
 }
 
@@ -283,13 +275,13 @@ function enterErrorState () {
 .##.......####.##....##.####..######..##.....##
 */
 
-function waitForCompletion (err, {ingestType, ingestName}) {
+function waitForCompletion (err, {ingestType, ingestName}, timer) {
   if (err) return enterErrorState();
 
-  const complete = moment(neoEndTime).isValid() && moment(elasticEndTime).isValid();
+  const complete = timer.isComplete();
 
   if (!complete) {
-    setTimeout(() => waitForCompletion({ingestType, ingestName}), pollingInterval);
+    setTimeout(() => waitForCompletion(null, {ingestType, ingestName}, timer), pollingInterval);
   } else {
     const deleteParams = {
       Bucket,
@@ -312,14 +304,16 @@ function waitForCompletion (err, {ingestType, ingestName}) {
           type: ingestType,
           load_date: Date.now(),
           readable_date: moment(new Date()).format('MMM Do HH:mm'),
-          neo_job_duration: getJobDuration(neoStartTime, neoEndTime),
-          elastic_job_duration: getJobDuration(elasticStartTime, elasticEndTime),
-          total_job_duration: getJobDuration(neoStartTime, ingestEndTime)
+          neo_job_duration: getJobDuration(timer.getNeoStart(), timer.getNeoEnd()),
+          elastic_job_duration: getJobDuration(timer.getElasticStart(), timer.getElasticEnd()),
+          total_job_duration: getJobDuration(timer.getNeoStart(), ingestEndTime)
         }
         
         console.log(`${ingestEndTime.format('MMM Do HH:mm')}: ${JSON.stringify(store_ingest_details, null, 4)}`);
 
-        mongoClient(store_ingest_details).then(() => start());
+        timer = new Times();
+
+        mongoClient(store_ingest_details).then(() => start(waitForCompletion));
       }
     })
   }
@@ -335,5 +329,8 @@ module.exports = {
   checkJobStatus,
   waitForPods,
   runJob,
-  createBulkJobs
+  createBulkJobs,
+  createDeltaJobs,
+  enterErrorState,
+  waitForCompletion
 };

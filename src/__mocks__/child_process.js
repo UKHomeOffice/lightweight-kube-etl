@@ -49,13 +49,9 @@ const get_pod_status = jest.fn()
 
 const get_job_status = jest.fn()
   .mockReturnValueOnce(new Error('kubectl get jobs error'))
+  .mockReturnValueOnce("")
   .mockReturnValueOnce(running_job)
   .mockReturnValue(complete_job);
-
-const get_exit_code_1_0 = jest.fn()
-  .mockReturnValueOnce(1)
-  .mockReturnValue(0)
-
 
 function getOutput (command) {
   const cmd = command.replace("kubectl --context acp-notprod_DACC -n dacc-entitysearch --token MOCK_TOKEN ", "")
@@ -73,12 +69,20 @@ function getOutput (command) {
     case "get jobs neo4j-delta-1538055240 -o json":
       return {stdout: get_job_status(), stderr: null};
     case "get jobs neo4j-bulk-1538055555 -o json":
-      return {stdout: complete_job, stderr: null}
+      return {stdout: complete_job, stderr: null};
     case "get jobs elastic-bulk-1538055555 -o json":
-      return {stdout: complete_job, stderr: null}
+      return {stdout: complete_job, stderr: null};
+    case "get jobs neo4j-delta-1538055555 -o json":
+      return {stdout: complete_job, stderr: null};
+    case "get jobs elastic-delta-1538055555 -o json":
+      return {stdout: complete_job, stderr: null};
     case "create job neo4j-bulk-1538055555 --from cronjob/neo4j-bulk":
-      return { exitcode: get_exit_code_1_0() };
+      return { exitcode: jest.fn().mockReturnValueOnce(1).mockReturnValue(0) };
     case "create job elastic-bulk-1538055555 --from cronjob/elastic-bulk":
+      return { exitcode: 0 };
+    case "create job neo4j-delta-1538055555 --from cronjob/neo4j-delta":
+      return { exitcode: jest.fn().mockReturnValueOnce(1).mockReturnValue(0) };
+    case "create job elastic-delta-1538055555 --from cronjob/elastic-delta":
       return { exitcode: 0 };
     case "create job neo4j-delta-1538022222 --from cronjob/neo4j-delta":
       return { exitcode: 1 };
