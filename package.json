@@ -1,13 +1,13 @@
 {
   "name": "lightweight-kube-etl",
   "version": "2.3.0",
-  "description": "",
+  "description": "extracts, transforms and loads data into entitysearch",
   "main": "index.js",
   "scripts": {
     "start": "node index",
     "test": "KUBE_SERVICE_ACCOUNT_TOKEN=MOCK_TOKEN BUCKET=test.bucket jest --coverage",
     "test-watch": "KUBE_SERVICE_ACCOUNT_TOKEN=MOCK_TOKEN BUCKET=test.bucket jest --watch",
-    "precommit": "pretty-quick --staged"
+    "precommit": "pretty-quick --staged && npm test"
   },
   "author": "dacc@ukhomeoffice",
   "license": "MIT",
