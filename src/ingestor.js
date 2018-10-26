@@ -184,7 +184,7 @@ function checkRollingStatus (podName, jobStartTime, podReady) {
     } else {
       const statusOk = getPodStatus(JSON.parse(stdout));
       const startedAt = getPodStartedAt(JSON.parse(stdout));
-      const isNew = moment(startedAt).isAfter(jobStartTime);
+      const isNew = startedAt ? moment(startedAt).isAfter(jobStartTime) : startedAt;
       
       statusOk && isNew
         ? podReady() 
@@ -329,7 +329,7 @@ function waitForCompletion (err, {ingestType, ingestName}, timer, start) {
           ingest: ingestName,
           type: ingestType,
           load_date: new Date(),
-          readable_date: moment(new Date()).format('dd MMM yyyy HH:mm'),
+          readable_date: moment(new Date()).format('ddd MMM YYYY HH:mm'),
           neo_job_duration: getJobDuration(timer.getNeoStart(), timer.getNeoEnd()),
           elastic_job_duration: getJobDuration(timer.getElasticStart(), timer.getElasticEnd()),
           total_job_duration: getJobDuration(timer.getNeoStart(), ingestEndTime)
