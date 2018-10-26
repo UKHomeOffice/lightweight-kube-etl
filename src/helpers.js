@@ -79,6 +79,13 @@ const getPodStatus = R.compose(
   R.pathOr([], ['status', 'containerStatuses'])
 )
 
+const getPodStartedAt = R.compose(
+  R.pathOr(false, ['state', 'running', 'startedAt']),
+  R.head,
+  R.filter(R.propEq('name', 'build')),
+  R.pathOr([], ['status', 'containerStatuses'])  
+)
+
 class Times {
   constructor () {
     this.neoStart = null;
@@ -122,5 +129,6 @@ module.exports = {
   getIngestFiles,
   getJobDuration,
   getPodStatus,
+  getPodStartedAt,
   Times
 }
