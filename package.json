@@ -1,6 +1,6 @@
 {
   "name": "lightweight-kube-etl",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "description": "extracts, transforms and loads data into entitysearch",
   "main": "index.js",
   "scripts": {
