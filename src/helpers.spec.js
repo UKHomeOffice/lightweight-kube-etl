@@ -11,6 +11,7 @@ const {
   getIngestFiles,
   getJobDuration,
   getPodStatus,
+  getPodStartedAt,
   Times
 } = require('./helpers');
 
@@ -69,7 +70,7 @@ const pod_status_not_ready = {
     "containerStatuses": [
       {
         "name": "build",
-        "ready": false,
+        "ready": true,
         "restartCount": 0,
         "state": {
             "running": {
@@ -297,7 +298,34 @@ describe('Times', () => {
     expect(timer.getElasticEnd()).toBe(null);
     expect(timer.getIngestFiles()).toBe(null);
   })
-})
+});
+
+describe('getPodStartedAt', () => {
+  it('should grab the startedAt time', () => {
+    expect(getPodStartedAt(pod_status_not_ready)).toBe("2018-10-09T10:10:00Z");
+  });
+
+  it('should handle rolling state', () => {
+    const rolling_update = {
+      "status": {
+        "containerStatuses": [
+          {
+            "name": "build",
+            "ready": true,
+            "restartCount": 0,
+            "state": {
+                "terminated": {
+                  "containerID": "docker://9f4698514ea"
+                }
+            }
+          }
+        ]
+      }
+    };
+
+    expect(getPodStartedAt(rolling_update)).toBe(false);
+  });
+});
 
 module.exports = {
   complete_job,

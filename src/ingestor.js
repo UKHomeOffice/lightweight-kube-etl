@@ -39,6 +39,7 @@ const {
   getIngestFiles,
   getJobDuration,
   getPodStatus,
+  getPodStartedAt,
   Times
 } = require('./helpers');
 
@@ -53,7 +54,7 @@ let timer = new Times();
 const pollingInterval = NODE_ENV === 'test' ? 10 : 1000 * 60;
 let baseArgs = ['--token', KUBE_SERVICE_ACCOUNT_TOKEN];
 
-if (NODE_ENV === 'test') {
+if (NODE_ENV === 'dev' || NODE_ENV === 'test') {
   baseArgs = R.concat(['--context', 'acp-notprod_DACC', '-n', 'dacc-entitysearch'], baseArgs);
 }
 
@@ -99,17 +100,16 @@ function start (waitForManifest) {
         
         console.log(`new ${ingestParams.ingestType} ingest detected in folder ${ingestParams.ingestName} - waiting for manifest file...`)
         
-        waitForManifest(ingestParams, getOldJobs)
+        waitForManifest(ingestParams, getOldJobs);
       }
     });
   }
 };
 
 function waitForManifest (ingestParams, getOldJobs) {
-  
   const { ingestName } = ingestParams;
   const manifestPrefix = `pending/${ingestName}/manifest.json`;
-
+  
   s3.listObjectsV2({Bucket, Prefix: manifestPrefix, Delimiter: ""}, (err, {Contents}) => {
     !Contents.length
       ? setTimeout(() => waitForManifest(ingestParams, getOldJobs), pollingInterval)
@@ -177,6 +177,22 @@ function deleteOldJobs ({ingestType, ingestName}, jobsToDelete, createBulkJobs, 
 ..######...#######..########...######.
 */
 
+function checkRollingStatus (podName, jobStartTime, podReady) {
+  exec(`kubectl ${R.join(' ', baseArgs)} get pods ${podName} -o json`, (err, stdout, stderr) => {
+    if (err || stderr) {
+      setTimeout(() => checkRollingStatus(podName, jobStartTime, podReady), pollingInterval);
+    } else {
+      const statusOk = getPodStatus(JSON.parse(stdout));
+      const startedAt = getPodStartedAt(JSON.parse(stdout));
+      const isNew = moment(startedAt).isAfter(jobStartTime);
+      
+      statusOk && isNew
+        ? podReady() 
+        : setTimeout(() => checkRollingStatus(podName, jobStartTime, podReady), pollingInterval);
+    }
+  });  
+}
+
 function checkPodStatus (podName, podReady) {
   exec(`kubectl ${R.join(' ', baseArgs)} get pods ${podName} -o json`, (err, stdout, stderr) => {
     let ready;
@@ -212,7 +228,14 @@ function waitForPods (job, next) {
   async.parallel(checks, err => next(err));
 }
 
-function runJob (job, callback) {
+function waitForRollingUpdate (job, timer, next) {
+  const jobStartTime = job.db === 'neo4j' ? timer.getNeoStart() : timer.getElasticStart();
+  
+  const checks = R.map(podName => ready => checkRollingStatus(podName, jobStartTime, ready))(job.pods);
+  async.parallel(checks, err => next(err));
+}
+
+function runJob (job, timer, callback) {
   async.waterfall([
     next => waitForPods(job, next),
     next => {
@@ -234,7 +257,7 @@ function runJob (job, callback) {
       checkJobStatus(job.name, next);
     },
     next => setTimeout(next, pollingInterval), //wait for drone to trigger a rolling update
-    next => waitForPods(job, next) // wait for the updates to roll through the cluster
+    next => waitForRollingUpdate(job, timer, next) // wait for the updates to roll through the cluster
   ], err => {
     if (!err) {
       job.db === 'neo4j' ? timer.setNeoEnd() : timer.setElasticEnd();
@@ -250,15 +273,15 @@ function createBulkJobs (ingestParams, jobs, waitForCompletion) {
   const [neo4j, elastic] = jobs;
 
   async.parallel([
-    done => runJob(neo4j, done),
-    done => runJob(elastic, done)
+    done => runJob(neo4j, timer, done),
+    done => runJob(elastic, timer, done)
   ], err => {
     waitForCompletion(err, ingestParams, timer, start);
   });
 }
 
 function createDeltaJobs(ingestParams, jobs, waitForCompletion) {
-  async.eachSeries(jobs, runJob, err => {
+  async.eachSeries(jobs, (job, done) => runJob(job, timer, done), err => {
     waitForCompletion(err, ingestParams, timer, start);
   });
 }
@@ -316,7 +339,7 @@ function waitForCompletion (err, {ingestType, ingestName}, timer, start) {
 
         timer.reset();
 
-        mongoClient(store_ingest_details).then(() => start(waitForCompletion));
+        mongoClient(store_ingest_details).then(() => start(waitForManifest));
       }
     })
   }
@@ -330,6 +353,7 @@ module.exports = {
   deleteOldJobs,
   checkPodStatus,
   checkJobStatus,
+  checkRollingStatus,
   waitForPods,
   runJob,
   createBulkJobs,

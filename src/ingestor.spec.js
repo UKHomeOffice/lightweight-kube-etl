@@ -13,6 +13,7 @@ const {
   deleteOldJobs,
   checkPodStatus,
   checkJobStatus,
+  checkRollingStatus,
   waitForPods,
   runJob,
   createBulkJobs,
@@ -117,11 +118,22 @@ describe('Kubectl - checkPodStatus', () => {
 
   it('should wait for a pod to be in a ready state', done => {    
     checkPodStatus('neo4j-0', () => {
-      expect(child_process.exec.mock.calls.length).toBe(4);
+      expect(child_process.exec.mock.calls.length).toBe(3);
       done();
     });
   });
 
+});
+
+describe('Kubectl - checkRollingStatus', () => {
+  it('should wait for a rolling update to complete', done => {
+    const jobStartTime = moment('2018-10-10T10:05:00Z');
+    checkRollingStatus('neo4j-0', jobStartTime, () => {
+      expect(child_process.exec.mock.calls.length).toBe(4);
+      expect(moment('2018-10-10T10:10:00Z').isAfter(jobStartTime)).toBe(true)
+      done();
+    });
+  });
 });
 
 describe('Kubectl - checkJobStatus', () => {
@@ -166,7 +178,9 @@ describe('Kubectl - runJob', () => {
       pods: [ 'neo4j-0', 'neo4j-1' ] 
     };
 
-    runJob(job, err => {
+    const timer = {}
+
+    runJob(job, timer, err => {
       expect(err instanceof Error).toBe(true);
       expect(err.message).toBe('neo4j-delta-1538022222 exits with non zero code');
       done();
@@ -183,7 +197,13 @@ describe('Kubectl - runJob', () => {
       pods: [ 'neo4j-0', 'neo4j-1' ] 
     };
 
-    runJob(job, err => {
+    const timer = {
+      setNeoStart: jest.fn(),
+      setNeoEnd: jest.fn(),
+      getNeoStart: () => moment('2018-10-10T10:05:00Z')
+    };
+
+    runJob(job, timer, err => {
       const log = console_log.mock.calls[0][0].split(': ')[1];
 
       expect(err).toBeFalsy();
