@@ -352,7 +352,7 @@ describe('Kubectl - waitForCompletion', () => {
       "ingest": "1538055555",
       "type": "incremental",
       "load_date": 1540394977882,
-      "readable_date": "Oct 24th 16:29",
+      "readable_date": "Fri Oct 24th 04:29pm",
       "neo_job_duration": "2h:15mins",
       "elastic_job_duration": "1h:05mins",
       "total_job_duration": "2h:29mins"
