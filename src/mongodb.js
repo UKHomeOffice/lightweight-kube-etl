@@ -2,10 +2,14 @@
 
 const Promise = require("bluebird")
 const MongoClient = Promise.promisifyAll(require("mongodb")).MongoClient
-const dbName = "entitysearch"
-
-const {MONGO_CONN} = process.env
+const { MONGO_CONN, MONGO_DB_NAME, MONGO_HAS_REPLICAS, MONGO_RS_NAME } = process.env;
 let mongoConnection = null
+
+const connectionString =
+  MONGO_HAS_REPLICAS == "true"
+    ? `${MONGO_CONN}${MONGO_DB_NAME}?replicaSet=${MONGO_RS_NAME}&readPreference=secondary`
+    : `${MONGO_CONN}${MONGO_DB_NAME}?readPreference=secondary`;
+
 
 function insert(doc) {
   return getCollection().then(collection => {
@@ -15,7 +19,7 @@ function insert(doc) {
 
 function connect() {
   return MongoClient.connect(
-    MONGO_CONN + dbName,
+    connectionString,
     {useNewUrlParser: true}
   ).then(client => {
     return client.db(dbName)
@@ -23,16 +27,11 @@ function connect() {
 }
 
 function getCollection() {
-
     if (mongoConnection) {
-
         return Promise.resolve(mongoConnection.collection("es_load_dates"));
     }
-
     return connect().then((connection) => {
-
         mongoConnection = connection;
-
         return mongoConnection.collection('es_load_dates');
     });
 }
