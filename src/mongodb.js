@@ -3,6 +3,7 @@
 const Promise = require("bluebird")
 const MongoClient = Promise.promisifyAll(require("mongodb")).MongoClient
 const { MONGO_CONN, MONGO_DB_NAME, MONGO_HAS_REPLICAS, MONGO_RS_NAME } = process.env;
+const dbName = "entitysearch";
 let mongoConnection = null
 
 const connectionString =
