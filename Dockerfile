@@ -1,7 +1,8 @@
 FROM node:lts-alpine as builder
 RUN apk --no-cache add openssl curl
 WORKDIR /usr/bin
-RUN wget https://storage.googleapis.com/kubernetes-release/release/$(wget -q -O - https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl
+ENV KUBECTL_VERSION 1.12.3
+RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl
 RUN chmod +x kubectl
 WORKDIR /app
 COPY package.json package-lock.json ./
