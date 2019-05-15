@@ -1,6 +1,6 @@
 {
   "name": "lightweight-kube-etl",
-  "version": "2.4.0",
+  "version": "2.4.1",
   "description": "extracts, transforms and loads data into entitysearch",
   "main": "index.js",
   "scripts": {
@@ -17,7 +17,8 @@
     "bluebird": "^3.5.2",
     "moment": "^2.22.2",
     "mongodb": "^3.1.1",
-    "ramda": "^0.25.0"
+    "ramda": "^0.25.0",
+    "merge": ">=1.2.1"
   },
   "devDependencies": {
     "@babel/core": "^7.4.4",
