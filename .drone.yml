@@ -13,5 +13,4 @@ pipeline:
       - ${DRONE_COMMIT_BRANCH}
       - b${DRONE_BUILD_NUMBER}
     when:
-      branch: master
       event: push
