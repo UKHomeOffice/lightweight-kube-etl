@@ -193,10 +193,10 @@ describe('Helper Functions', () => {
 
   it('can get all the files and folders for an ingest', () => {
     const ingest = [
-      {Key: 'pending/1538055250/manifest.json'},
-      {Key: 'pending/1538055250'},
-      {Key: 'pending/1538055250/person/person_headers.csv.gz'},
-      {Key: 'pending/1538055250/person/person_sample.csv.gz'}
+      {Key: 'preprod/pending/1538055250/manifest.json'},
+      {Key: 'preprod/pending/1538055250'},
+      {Key: 'preprod/pending/1538055250/person/person_headers.csv.gz'},
+      {Key: 'preprod/pending/1538055250/person/person_sample.csv.gz'}
     ];
 
     const params = {
@@ -266,11 +266,11 @@ describe('Times', () => {
     const files = times.getIngestFiles();
 
     const expected_files = [
-      { Key: 'pending/1538055240/manifest.json' },
-      { Key: 'pending/1538055240' },
-      { Key: 'pending/1538055240/person/person_headers.csv.gz' },
-      { Key: 'pending/1538055240/bulk.txt' },
-      { Key: 'pending/1538055240/manifest.json' }
+      { Key: 'preprod/pending/1538055240/manifest.json' },
+      { Key: 'preprod/pending/1538055240' },
+      { Key: 'preprod/pending/1538055240/person/person_headers.csv.gz' },
+      { Key: 'preprod/pending/1538055240/bulk.txt' },
+      { Key: 'preprod/pending/1538055240/manifest.json' }
     ];
   
     expect(files.length).toBe(5);

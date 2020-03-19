@@ -52,7 +52,7 @@ const {
 let timer = new Times();
 
 const pollingInterval = NODE_ENV === 'test' ? 10 : 1000 * 60;
-let baseArgs = ['--namespace', 'dacc-entitysearch-preprod' '--token', KUBE_SERVICE_ACCOUNT_TOKEN];
+let baseArgs = ['--namespace','dacc-entitysearch-preprod','--token', KUBE_SERVICE_ACCOUNT_TOKEN];
 
 if (NODE_ENV === 'dev' || NODE_ENV === 'test') {
   baseArgs = R.concat(['--context', 'acp-notprod_DACC', '-n', 'dacc-entitysearch'], baseArgs);
