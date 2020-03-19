@@ -52,7 +52,7 @@ const {
 let timer = new Times();
 
 const pollingInterval = NODE_ENV === 'test' ? 10 : 1000 * 60;
-let baseArgs = ['--token', KUBE_SERVICE_ACCOUNT_TOKEN];
+let baseArgs = ['--namespace', 'dacc-entitysearch-preprod' '--token', KUBE_SERVICE_ACCOUNT_TOKEN];
 
 if (NODE_ENV === 'dev' || NODE_ENV === 'test') {
   baseArgs = R.concat(['--context', 'acp-notprod_DACC', '-n', 'dacc-entitysearch'], baseArgs);
@@ -72,7 +72,7 @@ function start (waitForManifest) {
   if (waitForManifest instanceof Error) {
     enterErrorState();
   } else {
-    s3.listObjectsV2({Bucket, Prefix: "pending/", Delimiter: ""}, (err, folder) => {
+    s3.listObjectsV2({Bucket, Prefix: "preprod/pending/", Delimiter: ""}, (err, folder) => {
   
       if (err) {
         console.error(JSON.stringify(err, null, 2));
@@ -108,7 +108,7 @@ function start (waitForManifest) {
 
 function waitForManifest (ingestParams, getOldJobs) {
   const { ingestName } = ingestParams;
-  const manifestPrefix = `pending/${ingestName}/manifest.json`;
+  const manifestPrefix = `preprod/pending/${ingestName}/manifest.json`;
   
   s3.listObjectsV2({Bucket, Prefix: manifestPrefix, Delimiter: ""}, (err, {Contents}) => {
     !Contents.length

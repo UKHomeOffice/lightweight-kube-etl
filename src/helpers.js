@@ -56,7 +56,7 @@ const filterJobs = R.compose(
 const getStatus = R.pathOr(false, ['status', 'succeeded']);
 
 const getIngestFiles = ({ingestName}) => R.compose(
-  R.concat([{Key: `pending/${ingestName}/manifest.json`}, {Key: `pending/${ingestName}`}]),
+  R.concat([{Key: `preprod/pending/${ingestName}/manifest.json`}, {Key: `preprod/pending/${ingestName}`}]),
   R.filter(R.compose(R.contains(ingestName), R.split('/'), R.prop('Key'))),
   R.map(R.pick(['Key'])),
   R.prop('Contents')
