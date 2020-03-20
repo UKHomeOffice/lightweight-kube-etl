@@ -69,32 +69,36 @@ if (NODE_ENV === 'dev' || NODE_ENV === 'test') {
 */
 
 function start (waitForManifest) {
+    console.log('Start function preprod logs v2')
   if (waitForManifest instanceof Error) {
+    console.log('Wait for manifest error')
     enterErrorState();
   } else {
-    s3.listObjectsV2({Bucket, Prefix: "preprod/pending/", Delimiter: ""}, (err, folder) => {
-  
+    s3.listObjectsV2({Bucket, Prefix: "preprod/", Delimiter: ""}, (err, folder) => {
+      console.log('After listing the s3 objects')
       if (err) {
         console.error(JSON.stringify(err, null, 2));
-        
         return setTimeout(() => start(waitForManifest), pollingInterval);
-  
+
       } else if (!folder || !folder.Contents.length) {
-        
+        console.log('No folder condition')
         return setTimeout(() => start(waitForManifest), pollingInterval);
-  
+
       } else if (!hasTimestampFolders(folder)) {
-        
+        console.log(hasTimestampFolders(folder))
+        console.log(folder)
+        console.log('No timestamped folders')
         return setTimeout(() => start(waitForManifest), pollingInterval);
   
       } else {
+        console.log('Getting ingest params')
         const ingestParams = getIngestJobParams(folder);
-  
+        console.log(' After Getting ingest params')
         if (!ingestParams) {
           console.error('error in s3 bucket - check folders');
           return setTimeout(() => start(waitForManifest), pollingInterval);
         }
-        
+        console.log('Getting ingest files')
         const ingestFiles = getIngestFiles(ingestParams)(folder);
         timer.setIngestFiles(ingestFiles);
         
@@ -108,8 +112,9 @@ function start (waitForManifest) {
 
 function waitForManifest (ingestParams, getOldJobs) {
   const { ingestName } = ingestParams;
-  const manifestPrefix = `preprod/pending/${ingestName}/manifest.json`;
-  
+  const manifestPrefix = `preprod/${ingestName}/manifest.json`;
+  console.log('Wait for manifest function')
+
   s3.listObjectsV2({Bucket, Prefix: manifestPrefix, Delimiter: ""}, (err, {Contents}) => {
     !Contents.length
       ? setTimeout(() => waitForManifest(ingestParams, getOldJobs), pollingInterval)
