@@ -47,7 +47,7 @@ const {
   BUCKET: Bucket, 
   KUBE_SERVICE_ACCOUNT_TOKEN,
   NODE_ENV = 'production',
-  INGEST_PENDING_FOLDERS = ["pending/"],
+  INGEST_PENDING_FOLDERS = "pending/",
   NEO4J_REPLICAS = "2",
   ELASTIC_REPLICAS = "2"
 } = process.env;
@@ -75,7 +75,9 @@ function start (waitForManifest) {
   if (waitForManifest instanceof Error) {
     enterErrorState();
   } else {
-    INGEST_PENDING_FOLDERS.forEach(prefix => {
+    const pendingFolders = INGEST_PENDING_FOLDERS.split(",");
+
+    pendingFolders.forEach(prefix => {
       s3.listObjectsV2({Bucket, Prefix: prefix, Delimiter: ""}, (err, folder) => {
   
         if (err) {
