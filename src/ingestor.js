@@ -47,7 +47,9 @@ const {
   BUCKET: Bucket, 
   KUBE_SERVICE_ACCOUNT_TOKEN,
   NODE_ENV = 'production',
-  INGEST_PENDING_FOLDERS = ["pending/"] 
+  INGEST_PENDING_FOLDERS = ["pending/"],
+  NEO4J_REPLICAS = "2",
+  ELASTIC_REPLICAS = "2"
 } = process.env;
 
 let timer = new Times();
@@ -148,18 +150,28 @@ function deleteOldJobs ({ingestType, ingestName}, jobsToDelete, createBulkJobs, 
 
   const deleteJobs = spawn('kubectl', R.concat(baseArgs, ['delete', 'jobs', currentNeoJob, currentElasticJob]));  
   
+  var neo4j_pods = [];
+  for (var i = 0; i < Number.parseInt(NEO4J_REPLICAS); i++) {
+    neo4j_pods.push('neo4j-' + i.toString());
+  }
+
+  var elastic_pods = [];
+  for (var i = 0; i < Number.parseInt(ELASTIC_REPLICAS); i++) {
+    elastic_pods.push('elasticsearch-' + i.toString());
+  }
+
   const jobs = [
     {
       db: 'neo4j',
       name: `neo4j-${jobType}-${ingestName}`,
       cronJobName: `neo4j-${jobType}`,
-      pods: ['neo4j-0', 'neo4j-1']
+      pods: neo4j_pods
     },
     {
       db: 'elastic',
       name: `elastic-${jobType}-${ingestName}`,
       cronJobName: `elastic-${jobType}`,
-      pods: ['elasticsearch-0', 'elasticsearch-1']
+      pods: elastic_pods
     }
   ];
   
