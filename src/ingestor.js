@@ -46,7 +46,8 @@ const {
 const { 
   BUCKET: Bucket, 
   KUBE_SERVICE_ACCOUNT_TOKEN,
-  NODE_ENV = 'production'
+  NODE_ENV = 'production',
+  PENDING_FOLDERS = ["pending/", "pending_fdp"] 
 } = process.env;
 
 let timer = new Times();
@@ -72,36 +73,38 @@ function start (waitForManifest) {
   if (waitForManifest instanceof Error) {
     enterErrorState();
   } else {
-    s3.listObjectsV2({Bucket, Prefix: "pending/", Delimiter: ""}, (err, folder) => {
+    PENDING_FOLDERS.forEach(folder => {
+      s3.listObjectsV2({Bucket, Prefix: folder, Delimiter: ""}, (err, folder) => {
   
-      if (err) {
-        console.error(JSON.stringify(err, null, 2));
-        
-        return setTimeout(() => start(waitForManifest), pollingInterval);
-  
-      } else if (!folder || !folder.Contents.length) {
-        
-        return setTimeout(() => start(waitForManifest), pollingInterval);
-  
-      } else if (!hasTimestampFolders(folder)) {
-        
-        return setTimeout(() => start(waitForManifest), pollingInterval);
-  
-      } else {
-        const ingestParams = getIngestJobParams(folder);
-  
-        if (!ingestParams) {
-          console.error('error in s3 bucket - check folders');
+        if (err) {
+          console.error(JSON.stringify(err, null, 2));
+          
           return setTimeout(() => start(waitForManifest), pollingInterval);
+    
+        } else if (!folder || !folder.Contents.length) {
+          
+          return setTimeout(() => start(waitForManifest), pollingInterval);
+    
+        } else if (!hasTimestampFolders(folder)) {
+          
+          return setTimeout(() => start(waitForManifest), pollingInterval);
+    
+        } else {
+          const ingestParams = getIngestJobParams(folder);
+    
+          if (!ingestParams) {
+            console.error('error in s3 bucket - check folders');
+            return setTimeout(() => start(waitForManifest), pollingInterval);
+          }
+          
+          const ingestFiles = getIngestFiles(ingestParams)(folder);
+          timer.setIngestFiles(ingestFiles);
+          
+          console.log(`new ${ingestParams.ingestType} ingest detected in folder ${ingestParams.ingestName} - waiting for manifest file...`)
+          
+          waitForManifest(ingestParams, getOldJobs);
         }
-        
-        const ingestFiles = getIngestFiles(ingestParams)(folder);
-        timer.setIngestFiles(ingestFiles);
-        
-        console.log(`new ${ingestParams.ingestType} ingest detected in folder ${ingestParams.ingestName} - waiting for manifest file...`)
-        
-        waitForManifest(ingestParams, getOldJobs);
-      }
+      });        
     });
   }
 };
