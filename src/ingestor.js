@@ -47,7 +47,7 @@ const {
   BUCKET: Bucket, 
   KUBE_SERVICE_ACCOUNT_TOKEN,
   NODE_ENV = 'production',
-  PENDING_FOLDERS = ["pending/", "pending_fdp"] 
+  PENDING_FOLDERS = ["pending/", "pending_fdp/"] 
 } = process.env;
 
 let timer = new Times();
