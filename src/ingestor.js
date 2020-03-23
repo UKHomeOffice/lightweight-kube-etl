@@ -47,7 +47,7 @@ const {
   BUCKET: Bucket, 
   KUBE_SERVICE_ACCOUNT_TOKEN,
   NODE_ENV = 'production',
-  PENDING_FOLDERS = ["pending/", "pending_fdp/"] 
+  INGEST_PENDING_FOLDERS = ["pending/"] 
 } = process.env;
 
 let timer = new Times();
@@ -73,8 +73,8 @@ function start (waitForManifest) {
   if (waitForManifest instanceof Error) {
     enterErrorState();
   } else {
-    PENDING_FOLDERS.forEach(folder => {
-      s3.listObjectsV2({Bucket, Prefix: folder, Delimiter: ""}, (err, folder) => {
+    INGEST_PENDING_FOLDERS.forEach(prefix => {
+      s3.listObjectsV2({Bucket, Prefix: prefix, Delimiter: ""}, (err, folder) => {
   
         if (err) {
           console.error(JSON.stringify(err, null, 2));
