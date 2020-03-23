@@ -140,7 +140,7 @@ function getOldJobs (ingestParams, deleteOldJobs, enterErrorState) {
 
 function deleteOldJobs ({ingestType, ingestName}, jobsToDelete, createBulkJobs, createDeltaJobs) {
   const jobType = ingestType === 'incremental' ? 'delta' : ingestType;
-  
+
   const currentNeoJob = R.pipe(R.filter( R.startsWith(`neo4j-${jobType}`)), R.head)(jobsToDelete);
   const currentElasticJob = R.pipe(R.filter( R.startsWith(`elastic-${jobType}`)), R.head)(jobsToDelete);
   
@@ -155,13 +155,13 @@ function deleteOldJobs ({ingestType, ingestName}, jobsToDelete, createBulkJobs, 
       db: 'neo4j',
       name: `neo4j-${jobType}-${ingestName}`,
       cronJobName: `neo4j-${jobType}`,
-      pods: ['neo4j-0', 'neo4j-1']
+      pods: ['neo4j-0']
     },
     {
       db: 'elastic',
       name: `elastic-${jobType}-${ingestName}`,
       cronJobName: `elastic-${jobType}`,
-      pods: ['elasticsearch-0', 'elasticsearch-1']
+      pods: ['elasticsearch-0']
     }
   ];
   
@@ -244,11 +244,11 @@ function runJob (job, timer, callback) {
   async.waterfall([
     next => waitForPods(job, next),
     next => {
-      
+
       const args = R.concat(baseArgs, ['create', 'job', job.name, '--from', `cronjob/${job.cronJobName}`]);
       
       const jobPod = spawn('kubectl', args);
-      
+
       jobPod.on('exit', code => {
         const err = code !== 0 ? new Error(`${job.name} exits with non zero code`) : null;
         next(err);
