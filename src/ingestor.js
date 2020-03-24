@@ -72,50 +72,54 @@ if (NODE_ENV === 'dev' || NODE_ENV === 'test') {
 */
 
 function start (waitForManifest) {
+  const pendingFolders = INGEST_PENDING_FOLDERS.split(",");
+  pendingFolders.forEach(prefix => {
+    startAgain(waitForManifest, prefix);
+  });
+};
+
+function startAgain (waitForManifest, prefix) {
   if (waitForManifest instanceof Error) {
     enterErrorState();
   } else {
-    const pendingFolders = INGEST_PENDING_FOLDERS.split(",");
-
-    pendingFolders.forEach(prefix => {
-      s3.listObjectsV2({Bucket, Prefix: prefix, Delimiter: ""}, (err, folder) => {
+    s3.listObjectsV2({Bucket, Prefix: prefix, Delimiter: ""}, (err, folder) => {  
+      if (err) {
+        console.error(JSON.stringify(err, null, 2));
+        
+        return setTimeout(() => startAgain(waitForManifest, prefix), pollingInterval);
   
-        if (err) {
-          console.error(JSON.stringify(err, null, 2));
-          
-          return setTimeout(() => start(waitForManifest), pollingInterval);
-    
-        } else if (!folder || !folder.Contents.length) {
-          
-          return setTimeout(() => start(waitForManifest), pollingInterval);
-    
-        } else if (!hasTimestampFolders(folder)) {
-          
-          return setTimeout(() => start(waitForManifest), pollingInterval);
-    
-        } else {
-          const ingestParams = getIngestJobParams(folder);
-    
-          if (!ingestParams) {
-            console.error('error in s3 bucket - check folders');
-            return setTimeout(() => start(waitForManifest), pollingInterval);
-          }
-          
-          const ingestFiles = getIngestFiles(ingestParams)(folder);
-          timer.setIngestFiles(ingestFiles);
-          
-          console.log(`new ${ingestParams.ingestType} ingest detected in folder ${ingestParams.ingestName} - waiting for manifest file...`)
-          
-          waitForManifest(ingestParams, getOldJobs);
+      } else if (!folder || !folder.Contents.length) {
+        
+        return setTimeout(() => startAgain(waitForManifest, prefix), pollingInterval);
+  
+      } else if (!hasTimestampFolders(folder)) {
+        
+        return setTimeout(() => startAgain(waitForManifest, prefix), pollingInterval);
+  
+      } else {
+        const ingestParams = getIngestJobParams(folder);
+  
+        if (!ingestParams) {
+          console.error('error in s3 bucket - check folders');
+          return setTimeout(() => startAgain(waitForManifest, prefix), pollingInterval);
         }
-      });        
+        
+        ingestParams.ingestFolder = prefix;
+
+        const ingestFiles = getIngestFiles(ingestParams)(folder);
+        timer.setIngestFiles(ingestFiles);
+        
+        console.log(`new ${ingestParams.ingestType} ingest detected in folder ${ingestParams.ingestName} - waiting for manifest file...`)
+        
+        waitForManifest(ingestParams, getOldJobs);
+      }
     });
   }
 };
 
 function waitForManifest (ingestParams, getOldJobs) {
-  const { ingestName } = ingestParams;
-  const manifestPrefix = `pending/${ingestName}/manifest.json`;
+  const { ingestFolder, ingestName } = ingestParams;
+  const manifestPrefix = `${ingestFolder}${ingestName}/manifest.json`;
   
   s3.listObjectsV2({Bucket, Prefix: manifestPrefix, Delimiter: ""}, (err, {Contents}) => {
     !Contents.length

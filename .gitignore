@@ -4,3 +4,4 @@ coverage
 .idea/
 sandbox/
 .DS_Store
+.vscode/

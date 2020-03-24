@@ -316,7 +316,7 @@ describe('Kubectl - createDeltaJobs', () => {
 
 describe('Kubectl - waitForCompletion', () => {
   it('should wait for completion and handle errors', done => {
-    const _files = getIngestFiles({ingestName: '1538055240', ingestType: 'bulk'})(s3_samples.ts_folders);
+    const _files = getIngestFiles({ingestFolder: 'pending/', ingestName: '1538055240', ingestType: 'bulk'})(s3_samples.ts_folders);
     const timer = {
       isComplete: jest.fn()
         .mockReturnValueOnce(false)
@@ -334,7 +334,7 @@ describe('Kubectl - waitForCompletion', () => {
   });
 
   it('should wait for completion and handle errors', done => {
-    const _files = getIngestFiles({ingestName: '1538055240', ingestType: 'bulk'})(s3_samples.ts_folders);
+    const _files = getIngestFiles({ingestFolder: 'pending/', ingestName: '1538055240', ingestType: 'bulk'})(s3_samples.ts_folders);
     
     const timer = {
       isComplete: jest.fn().mockReturnValue(true),

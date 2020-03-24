@@ -201,6 +201,7 @@ describe('Helper Functions', () => {
 
     const params = {
       ingestType: 'bulk',
+      ingestFolder: 'pending/',
       ingestName: '1538055250'
     }
 
@@ -260,7 +261,7 @@ describe('Times', () => {
 
   it('should hold the ingestFile list', () => {
     const times = new Times();
-    const _files = getIngestFiles({ingestName: '1538055240', ingestType: 'bulk'})(s3_samples.ts_folders);
+    const _files = getIngestFiles({ingestFolder: 'pending/', ingestName: '1538055240', ingestType: 'bulk'})(s3_samples.ts_folders);
     times.setIngestFiles(_files);
 
     const files = times.getIngestFiles();
