@@ -124,12 +124,14 @@ describe("Helper Functions", () => {
     expect(hasTimestampFolders(s3_samples.ts_folders)).toBe(true);
   });
 
-  // it('extracts the oldest timestamped folder from a list', () => {
-  //   const {ingestType, ingestName} = getIngestJobParams(s3_samples.ts_folders);
+  it("extracts the oldest timestamped folder from a list", () => {
+    const { ingestType, ingestName } = getIngestJobParams(
+      s3_samples.ts_folders
+    );
 
-  //   expect(ingestType).toBe('bulk');
-  //   expect(ingestName).toBe('1538055240');
-  // });
+    expect(ingestType).toBe("bulk");
+    expect(ingestName).toBe("1538055240");
+  });
 
   // it('extracts the oldest timestamped folder from a list', () => {
   //   const {ingestType, ingestName} = getIngestJobParams(s3_samples.out_of_order_folders);
