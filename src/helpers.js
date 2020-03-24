@@ -29,44 +29,57 @@ const getIngestJobParams = folder => {
   //   R.prop('Contents')
   // )(folder);
 
-  const splits = R.compose(
+  const oldestFolder = R.compose(
+    R.head,
+    R.sort((older, newer) => {
+      if (older[1] > newer[1]) return 1;
+      if (older[1] < newer[1]) return -1;
+      return 0;
+    }),
+    R.filter(R.compose(R.contains(R.__, ["bulk.txt", "incremental.txt"]), R.last)),
     R.map(R.take(3)),
     R.map(R.compose(R.split("/"), R.prop("Key"))),
     R.prop('Contents')
   )(folder);
 
-  console.log("splits: " + splits);
+//   const splits = R.compose(
+//     R.map(R.take(3)),
+//     R.map(R.compose(R.split("/"), R.prop("Key"))),
+//     R.prop('Contents')
+//   )(folder);
 
-  const filtered = R.compose(
-    R.filter(R.compose(R.contains(R.__, ["bulk.txt", "incremental.txt"]), R.last)),
-  )(splits);
+//   console.log("splits: " + splits);
 
-  console.log("");
-  console.log("filtered: " + filtered);
+//   const filtered = R.compose(
+//     R.filter(R.compose(R.contains(R.__, ["bulk.txt", "incremental.txt"]), R.last)),
+//   )(splits);
 
-  // const sorted = R.compose(
-  //   R.sort((older, newer) => (older[1] > newer[1])),
-  // )(filtered);
+//   console.log("");
+//   console.log("filtered: " + filtered);
 
-//  const sorted = R.sort.sort((older, newer) => (older[1] > newer[1]),filtered);
+//   // const sorted = R.compose(
+//   //   R.sort((older, newer) => (older[1] > newer[1])),
+//   // )(filtered);
+
+// //  const sorted = R.sort.sort((older, newer) => (older[1] > newer[1]),filtered);
   
-const sorted = R.sort((older, newer) => {
-  var result = 0;
-  if (older[1] > newer[1]) {
-    result = 1;
-  } else if (older[1] < newer[1]) {
-    result = -1;
-  }
-  return result;
-},filtered);
+// const sorted = R.sort((older, newer) => {
+//   var result = 0;
+//   if (older[1] > newer[1]) {
+//     result = 1;
+//   } else if (older[1] < newer[1]) {
+//     result = -1;
+//   }
+//   return result;
+// },filtered);
 
 
-  console.log("");
-  console.log("sorted: " + sorted);
+//   console.log("");
+//   console.log("sorted: " + sorted);
 
-  const oldestFolder = R.compose(
-    R.head
-  )(sorted);
+//   const oldestFolder = R.compose(
+//     R.head
+//   )(sorted);
 
   if (!oldestFolder) return;
 
