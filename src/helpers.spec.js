@@ -133,12 +133,12 @@ describe("Helper Functions", () => {
     expect(ingestName).toBe("1538055240");
   });
 
-  // it('extracts the oldest timestamped folder from a list', () => {
-  //   const {ingestType, ingestName} = getIngestJobParams(s3_samples.out_of_order_folders);
+  it('extracts the oldest timestamped folder from a list', () => {
+    const {ingestType, ingestName} = getIngestJobParams(s3_samples.out_of_order_folders);
 
-  //   expect(ingestType).toBe('incremental');
-  //   expect(ingestName).toBe('1111');
-  // });
+    expect(ingestType).toBe('incremental');
+    expect(ingestName).toBe('1111');
+  });
 
   it("handles mis-formed folder contents", () => {
     const response = getIngestJobParams(s3_samples.bad_folders);
