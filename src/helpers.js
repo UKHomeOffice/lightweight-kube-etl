@@ -20,14 +20,34 @@ const hasTimestampFolders = R.compose(
 );
 
 const getIngestJobParams = folder => {
-  const oldestFolder = R.compose(
-    R.head,
-    R.sort((older, newer) => (older[1] > newer[1])),
-    R.filter(R.compose(R.contains(R.__, ["bulk.txt", "incremental.txt"]), R.last)),
+  // const oldestFolder = R.compose(
+  //   R.head,
+  //   R.sort((older, newer) => (older[1] > newer[1])),
+  //   R.filter(R.compose(R.contains(R.__, ["bulk.txt", "incremental.txt"]), R.last)),
+  //   R.map(R.take(3)),
+  //   R.map(R.compose(R.split("/"), R.prop("Key"))),
+  //   R.prop('Contents')
+  // )(folder);
+
+  const splits = R.compose(
     R.map(R.take(3)),
     R.map(R.compose(R.split("/"), R.prop("Key"))),
     R.prop('Contents')
   )(folder);
+
+  console.log("splits: " + splits);
+
+  const filtered = R.compose(
+    R.filter(R.compose(R.contains(R.__, ["bulk.txt", "incremental.txt"]), R.last)),
+  )(splits);
+
+  console.log("");
+  console.log("filtered: " + filtered);
+
+  const oldestFolder = R.compose(
+    R.head,
+    R.sort((older, newer) => (older[1] > newer[1])),
+  )(filtered);
 
   if (!oldestFolder) return;
 
