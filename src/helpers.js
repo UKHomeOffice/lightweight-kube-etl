@@ -44,10 +44,16 @@ const getIngestJobParams = folder => {
   console.log("");
   console.log("filtered: " + filtered);
 
-  const oldestFolder = R.compose(
-    R.head,
+  const sorted = R.compose(
     R.sort((older, newer) => (older[1] > newer[1])),
   )(filtered);
+
+  console.log("");
+  console.log("sorted: " + sorted);
+
+  const oldestFolder = R.compose(
+    R.head
+  )(sorted);
 
   if (!oldestFolder) return;
 
