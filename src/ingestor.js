@@ -43,6 +43,12 @@ const {
   Times
 } = require('./helpers');
 
+/*
+NOTES ON ENV VARS
+-----------------
+INGEST_PENDING_FOLDERS -  comma separated string detailing each folder to monitor
+                          e.g. 'pending/,pending_fdp/,some_other_folder/'
+*/
 const { 
   BUCKET: Bucket, 
   KUBE_SERVICE_ACCOUNT_TOKEN,
