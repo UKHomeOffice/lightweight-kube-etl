@@ -134,6 +134,8 @@ describe("Helper Functions", () => {
   });
 
   it('extracts the oldest timestamped folder from a list', () => {
+    console.log("INCREMENTAL TEST START");
+
     const {ingestType, ingestName} = getIngestJobParams(s3_samples.out_of_order_folders);
 
     expect(ingestType).toBe('incremental');
