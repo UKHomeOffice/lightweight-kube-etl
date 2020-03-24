@@ -44,9 +44,11 @@ const getIngestJobParams = folder => {
   console.log("");
   console.log("filtered: " + filtered);
 
-  const sorted = R.compose(
-    R.sort((older, newer) => (older[1] > newer[1])),
-  )(filtered);
+  // const sorted = R.compose(
+  //   R.sort((older, newer) => (older[1] > newer[1])),
+  // )(filtered);
+
+  const sorted = R.sort((older, newer) => (older[1] > newer[1]),filtered);
 
   console.log("");
   console.log("sorted: " + sorted);
