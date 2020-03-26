@@ -88,8 +88,8 @@ function start(waitForManifest) {
   const pendingFolders = INGEST_PENDING_FOLDERS.split(",");
   pendingFolders.forEach(folder => {
     const prefix = folder + "/";
-    if (INGEST_FDP_ENABLED == "false" && isFDP(prefix)) continue;
-    startAgain(waitForManifest, prefix);
+    if (INGEST_FDP_ENABLED == "true" || !isFDP(prefix))
+      startAgain(waitForManifest, prefix);
   });
 }
 
@@ -245,8 +245,8 @@ function deleteOldJobs(
 
   deleteJobs.on("exit", () => {
     jobType === "bulk"
-      ? createBulkJobs({ ingestType, ingestName }, jobs, waitForCompletion)
-      : createDeltaJobs({ ingestType, ingestName }, jobs, waitForCompletion);
+      ? createBulkJobs({ ingestType, ingestName, ingestFolder }, jobs, waitForCompletion)
+      : createDeltaJobs({ ingestType, ingestName, ingestFolder }, jobs, waitForCompletion);
   });
 }
 
@@ -433,14 +433,14 @@ function enterErrorState() {
 .##.......####.##....##.####..######..##.....##
 */
 
-function waitForCompletion(err, { ingestType, ingestName }, timer, start) {
+function waitForCompletion(err, { ingestType, ingestName, ingestFolder }, timer, start) {
   if (err) return enterErrorState();
 
   const complete = timer.isComplete();
 
   if (!complete) {
     setTimeout(
-      () => waitForCompletion(null, { ingestType, ingestName }, timer, start),
+      () => waitForCompletion(null, { ingestType, ingestName, ingestFolder }, timer, start),
       pollingInterval
     );
   } else {
