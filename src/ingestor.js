@@ -62,7 +62,7 @@ const {
 
 let timer = new Times();
 
-const FDP_SUFFIX = "_fdp";
+const isFDP = (folder) => folder.includes("_fdp");
 
 const pollingInterval = NODE_ENV === "test" ? 10 : 1000 * 60;
 let baseArgs = ["--token", KUBE_SERVICE_ACCOUNT_TOKEN];
@@ -88,8 +88,7 @@ function start(waitForManifest) {
   const pendingFolders = INGEST_PENDING_FOLDERS.split(",");
   pendingFolders.forEach(folder => {
     const prefix = folder + "/";
-    if (INGEST_FDP_ENABLED == "false" && prefix.includes(FDP_SUFFIX))
-      continue;
+    if (INGEST_FDP_ENABLED == "false" && isFDP(prefix)) continue;
     startAgain(waitForManifest, prefix);
   });
 }
@@ -228,8 +227,6 @@ function deleteOldJobs(
   for (var i = 0; i < Number.parseInt(ELASTIC_REPLICAS); i++) {
     elastic_pods.push("elasticsearch-" + i.toString());
   }
-
-  const isFDP = (folder) => folder.includes(FDP_SUFFIX);
 
   const jobs = [
     {
