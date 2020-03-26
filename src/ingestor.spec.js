@@ -36,7 +36,7 @@ describe('Kubectl - getOldJobs', () => {
   });
 
   it('should get jobs to delete for a bulk', done => {
-    const ingestParams = {ingestName: '1538055240', ingestType: 'bulk'};
+    const ingestParams = {ingestFolder: 'pending/', ingestName: '1538055240', ingestType: 'bulk'};
     getOldJobs(ingestParams, (params, jobs) => {
       
       expect(jobs.length).toBe(2);
@@ -48,7 +48,7 @@ describe('Kubectl - getOldJobs', () => {
   });
 
   it('should get jobs to delete for a delta', done => {
-    const ingestParams = {ingestName: '1538055240', ingestType: 'incremental'};
+    const ingestParams = {ingestFolder: 'pending/', ingestName: '1538055240', ingestType: 'incremental'};
     getOldJobs(ingestParams, (params, jobs) => {
       
       expect(jobs.length).toBe(2);
@@ -63,7 +63,7 @@ describe('Kubectl - getOldJobs', () => {
 
 describe('Kubectl - deleteOldJobs', () => {
   it('should call createBulkJobs when the ingest is a bulk', done => {
-    const ingestParams = {ingestName: '1538055240', ingestType: 'bulk'};
+    const ingestParams = {ingestFolder: 'pending/', ingestName: '1538055240', ingestType: 'bulk'};
     const jobsToDelete = ["elastic-bulk-1538055000", "neo4j-bulk-1538055000"];
     const expected_jobs = [
       {
@@ -88,7 +88,7 @@ describe('Kubectl - deleteOldJobs', () => {
   });
 
   it('should call createDeltaJobs when the ingest is a delta', done => {
-    const ingestParams = {ingestName: '1538055240', ingestType: 'incremental'};
+    const ingestParams = {ingestFolder: 'pending/', ingestName: '1538055240', ingestType: 'incremental'};
     const jobsToDelete = ["elastic-delta-1538055000", "neo4j-delta-1538055000"];
     const expected_jobs = [
       {
@@ -231,7 +231,7 @@ describe('Kubectl - createBulkJobs', () => {
   ];
 
   it('should handle errors', done => {
-    const ingestParams = {ingestName: '1538055555', ingestType: 'bulk'};
+    const ingestParams = {ingestFolder: 'pending/', ingestName: '1538055555', ingestType: 'bulk'};
 
     createBulkJobs(ingestParams, bulkjobs, err => {
       expect(err instanceof Error).toBe(true);
@@ -240,7 +240,7 @@ describe('Kubectl - createBulkJobs', () => {
   })
 
   it('should create bulk jobs and trigger them', done => {
-    const ingestParams = {ingestName: '1538055555', ingestType: 'bulk'};
+    const ingestParams = {ingestFolder: 'pending/', ingestName: '1538055555', ingestType: 'bulk'};
     const console_spy = jest.spyOn(console, 'log').mockImplementation(noop);
     
     createBulkJobs(ingestParams, bulkjobs, (err, _ingestParams) => {
@@ -281,7 +281,7 @@ describe('Kubectl - createDeltaJobs', () => {
   ];
 
   it('should handle errors', done => {
-    const ingestParams = {ingestName: '1538055555', ingestType: 'incremental'};
+    const ingestParams = {ingestFolder: 'pending/', ingestName: '1538055555', ingestType: 'incremental'};
 
     createDeltaJobs(ingestParams, deltajobs, err => {
       expect(err instanceof Error).toBe(true);
@@ -290,7 +290,7 @@ describe('Kubectl - createDeltaJobs', () => {
   })
 
   it('should create bulk jobs and trigger them', done => {
-    const ingestParams = {ingestName: '1538055555', ingestType: 'incremental'};
+    const ingestParams = {ingestFolder: 'pending/', ingestName: '1538055555', ingestType: 'incremental'};
     const console_spy = jest.spyOn(console, 'log').mockImplementation(noop);
     
     createDeltaJobs(ingestParams, deltajobs, (err, _ingestParams) => {
@@ -316,7 +316,7 @@ describe('Kubectl - createDeltaJobs', () => {
 
 describe('Kubectl - waitForCompletion', () => {
   it('should wait for completion and handle errors', done => {
-    const _files = getIngestFiles({ingestName: '1538055240', ingestType: 'bulk'})(s3_samples.ts_folders);
+    const _files = getIngestFiles({ingestFolder: 'pending/', ingestName: '1538055240', ingestType: 'bulk'})(s3_samples.ts_folders);
     const timer = {
       isComplete: jest.fn()
         .mockReturnValueOnce(false)
@@ -325,7 +325,7 @@ describe('Kubectl - waitForCompletion', () => {
         .mockReturnValue(_files)
     };
     
-    const ingestParams = {ingestName: '1538055555', ingestType: 'incremental'};
+    const ingestParams = {ingestFolder: 'pending/', ingestName: '1538055555', ingestType: 'incremental'};
 
     waitForCompletion(null, ingestParams, timer, err => {
       expect(err instanceof Error).toBe(true);
@@ -334,7 +334,7 @@ describe('Kubectl - waitForCompletion', () => {
   });
 
   it('should wait for completion and handle errors', done => {
-    const _files = getIngestFiles({ingestName: '1538055240', ingestType: 'bulk'})(s3_samples.ts_folders);
+    const _files = getIngestFiles({ingestFolder: 'pending/', ingestName: '1538055240', ingestType: 'bulk'})(s3_samples.ts_folders);
     
     const timer = {
       isComplete: jest.fn().mockReturnValue(true),
@@ -346,7 +346,7 @@ describe('Kubectl - waitForCompletion', () => {
       reset: jest.fn()
     };
     
-    const ingestParams = {ingestName: '1538055555', ingestType: 'incremental'};
+    const ingestParams = {ingestFolder: 'pending/', ingestName: '1538055555', ingestType: 'incremental'};
 
     const expected_output = {
       "ingest": "1538055555",
@@ -376,7 +376,7 @@ describe('Error states', () => {
   });
 
   it('waitForCompletion should enter an error state', () => {
-    const ingestParams = {ingestName: '1538055555', ingestType: 'incremental'};
+    const ingestParams = {ingestFolder: 'pending/', ingestName: '1538055555', ingestType: 'incremental'};
     expect(waitForCompletion(new Error, ingestParams, {}, noop)).toBe(true);
   });
 });
