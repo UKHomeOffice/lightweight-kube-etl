@@ -54,12 +54,15 @@ const {
   BUCKET: Bucket,
   KUBE_SERVICE_ACCOUNT_TOKEN,
   NODE_ENV = "production",
+  INGEST_FDP_ENABLED = "false",
   INGEST_PENDING_FOLDERS = "pending",
   NEO4J_REPLICAS = "2",
   ELASTIC_REPLICAS = "2"
 } = process.env;
 
 let timer = new Times();
+
+const FDP_SUFFIX = "_fdp";
 
 const pollingInterval = NODE_ENV === "test" ? 10 : 1000 * 60;
 let baseArgs = ["--token", KUBE_SERVICE_ACCOUNT_TOKEN];
@@ -85,6 +88,8 @@ function start(waitForManifest) {
   const pendingFolders = INGEST_PENDING_FOLDERS.split(",");
   pendingFolders.forEach(folder => {
     const prefix = folder + "/";
+    if (INGEST_FDP_ENABLED == "false" && prefix.includes(FDP_SUFFIX))
+      continue;
     startAgain(waitForManifest, prefix);
   });
 }
@@ -185,7 +190,7 @@ function getOldJobs(ingestParams, deleteOldJobs, enterErrorState) {
 }
 
 function deleteOldJobs(
-  { ingestType, ingestName },
+  { ingestType, ingestName, ingestFolder },
   jobsToDelete,
   createBulkJobs,
   createDeltaJobs
@@ -224,17 +229,19 @@ function deleteOldJobs(
     elastic_pods.push("elasticsearch-" + i.toString());
   }
 
+  const isFDP = (folder) => folder.includes(FDP_SUFFIX);
+
   const jobs = [
     {
       db: "neo4j",
-      name: `neo4j-${jobType}-${ingestName}`,
-      cronJobName: `neo4j-${jobType}`,
+      name: isFDP(ingestFolder) ? `neo4j-${jobType}-${ingestName}-fdp` : `neo4j-${jobType}-${ingestName}`,
+      cronJobName: isFDP(ingestFolder) ? `neo4j-${jobType}-fdp` : `neo4j-${jobType}`,
       pods: neo4j_pods
     },
     {
       db: "elastic",
-      name: `elastic-${jobType}-${ingestName}`,
-      cronJobName: `elastic-${jobType}`,
+      name: isFDP(ingestFolder) ? `elastic-${jobType}-${ingestName}-fdp` : `elastic-${jobType}-${ingestName}`,
+      cronJobName: isFDP(ingestFolder) ? `elastic-${jobType}-fdp` : `elastic-${jobType}`,
       pods: elastic_pods
     }
   ];
