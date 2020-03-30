@@ -94,8 +94,8 @@ function start(waitForManifest) {
             console.log(
               "Folder has content of length: " + folder.Contents.length
             );
-            folder.Contents.forEach(key => {
-              console.log("key: " + key);
+            folder.Contents.forEach(item => {
+              console.log("key: " + item.Key);
             });
           }
         }
