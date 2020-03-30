@@ -76,6 +76,7 @@ function start (waitForManifest) {
   } else {
     s3.listObjectsV2({Bucket, Prefix: "preprod/", Delimiter: ""}, (err, folder) => {
       console.log('After listing the s3 objects')
+      console.log('Folder: ' + folder);
       if (err) {
         console.error(JSON.stringify(err, null, 2));
         return setTimeout(() => start(waitForManifest), pollingInterval);
