@@ -85,20 +85,20 @@ function start(waitForManifest) {
     s3.listObjectsV2(
       { Bucket, Prefix: "preprod/", Delimiter: "" },
       (err, folder) => {
+
         console.log("After listing the s3 objects");
         if (!folder) {
-          console.log("Folder is NOT undefined");
-          } else if (!folder.Contents.length) {
-            console.log("Folder has content of length undefined");
-          } else {
-            console.log(
-              "Folder has content of length: " + folder.Contents.length
-            );
-            folder.Contents.forEach(item => {
-              console.log("key: " + item.Key);
-            });
-          }
-
+          console.log("Folder is undefined");
+        } else if (!folder.Contents) {
+          console.log("Folder Content is undefined");
+        } else if (!folder.Contents.length) {
+          console.log("Folder Content Length is undefined");  
+        } else {
+          console.log("Folder has content of length: " + folder.Contents.length);
+          folder.Contents.forEach(item => {
+            console.log("key: " + item.Key);
+          });
+        }
 
         if (err) {
           console.error(JSON.stringify(err, null, 2));
