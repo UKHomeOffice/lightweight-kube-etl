@@ -88,7 +88,7 @@ function start(waitForManifest) {
         console.log("After listing the s3 objects");
         if (!folder) {
           console.log("Folder is NOT undefined");
-          if (!folder.Contents.length) {
+          } else if (!folder.Contents.length) {
             console.log("Folder has content of length undefined");
           } else {
             console.log(
@@ -98,7 +98,7 @@ function start(waitForManifest) {
               console.log("key: " + item.Key);
             });
           }
-        }
+
 
         if (err) {
           console.error(JSON.stringify(err, null, 2));
