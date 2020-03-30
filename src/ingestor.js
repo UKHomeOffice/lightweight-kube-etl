@@ -89,7 +89,7 @@ function start(waitForManifest) {
         if (!folder) {
           console.log("Folder is NOT undefined");
           if (!folder.Contents.length) {
-            console.log("Folder has content of length of zero or undefined");
+            console.log("Folder has content of length undefined");
           } else {
             console.log(
               "Folder has content of length: " + folder.Contents.length
