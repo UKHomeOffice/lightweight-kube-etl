@@ -269,6 +269,43 @@ describe("Kubectl - checkPodStatus", () => {
   beforeAll(child_process.exec.mockClear);
 
   it("should wait for a pod to be in a ready state", (done) => {
+    const pod_status_ready = {
+      status: {
+        containerStatuses: [
+          {
+            name: "build",
+            ready: true,
+            restartCount: 0,
+            state: {
+              running: {
+                startedAt: "2018-10-10T10:10:00Z",
+              },
+            },
+          },
+          {
+            name: "neo4j",
+            ready: true,
+            restartCount: 0,
+            state: {
+              running: {
+                startedAt: "2018-10-10T10:11:00Z",
+              },
+            },
+          },
+        ],
+      },
+    };
+
+    child_process.exec.mockImplementationOnce((command, callback) =>
+      callback()
+    );
+    child_process.exec.mockImplementationOnce((command, callback) =>
+      callback()
+    );
+    child_process.exec.mockImplementationOnce((command, callback) =>
+      callback(null, JSON.stringify(pod_status_ready))
+    );
+
     checkPodStatus("neo4j-0", () => {
       expect(child_process.exec.mock.calls.length).toBe(3);
       done();
@@ -277,7 +314,45 @@ describe("Kubectl - checkPodStatus", () => {
 });
 
 describe("Kubectl - checkRollingStatus", () => {
+  beforeAll(child_process.exec.mockClear);
+
   it("should wait for a rolling update to complete", (done) => {
+    const pod_status_ready = {
+      status: {
+        containerStatuses: [
+          {
+            name: "build",
+            ready: true,
+            restartCount: 0,
+            state: {
+              running: {
+                startedAt: "2018-10-10T10:10:00Z",
+              },
+            },
+          },
+          {
+            name: "neo4j",
+            ready: true,
+            restartCount: 0,
+            state: {
+              running: {
+                startedAt: "2018-10-10T10:11:00Z",
+              },
+            },
+          },
+        ],
+      },
+    };
+
+    for (var i = 0; i < 3; i++) {
+      child_process.exec.mockImplementationOnce((command, callback) =>
+        callback("err")
+      );
+    }
+    child_process.exec.mockImplementationOnce((command, callback) =>
+      callback(null, JSON.stringify(pod_status_ready))
+    );
+
     const jobStartTime = moment("2018-10-10T10:05:00Z");
     checkRollingStatus("neo4j-0", jobStartTime, () => {
       expect(child_process.exec.mock.calls.length).toBe(4);
@@ -291,6 +366,41 @@ describe("Kubectl - checkJobStatus", () => {
   beforeAll(child_process.exec.mockClear);
 
   it("should wait for a job to finish", (done) => {
+    const complete_job = {
+      status: {
+        conditions: [
+          {
+            type: "Complete",
+            status: "True",
+            lastProbeTime: "2016-09-22T13:59:03Z",
+            lastTransitionTime: "2016-09-22T13:59:03Z",
+          },
+        ],
+        startTime: "2016-09-22T13:56:42Z",
+        completionTime: "2016-09-22T13:59:03Z",
+        succeeded: 1,
+      },
+    };
+
+    const running_job = {
+      status: {
+        startTime: "2016-09-22T13:56:42Z",
+        active: 1,
+      },
+    };
+
+    for (var i = 0; i < 2; i++) {
+      child_process.exec.mockImplementationOnce((command, callback) =>
+        callback("err")
+      );
+    }
+    child_process.exec.mockImplementationOnce((command, callback) =>
+      callback(null, JSON.stringify(running_job))
+    );
+    child_process.exec.mockImplementationOnce((command, callback) =>
+      callback(null, JSON.stringify(complete_job))
+    );
+
     checkJobStatus("neo4j-delta-1538055240", () => {
       expect(child_process.exec.mock.calls.length).toBe(4);
       done();
@@ -299,9 +409,9 @@ describe("Kubectl - checkJobStatus", () => {
 });
 
 describe("Kubectl - waitForPods", () => {
-  it("should wait for both pods to be ready", (done) => {
-    child_process.exec.mockClear();
+  beforeAll(child_process.exec.mockClear);
 
+  it("should wait for both pods to be ready", (done) => {
     const job = {
       db: "neo4j",
       name: "neo4j-delta-1538055240",
