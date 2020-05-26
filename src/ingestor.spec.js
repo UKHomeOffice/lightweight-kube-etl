@@ -588,6 +588,21 @@ describe("Kubectl - createDeltaJobs", () => {
     },
   ];
 
+  const deltajobs_suffix = [
+    {
+      db: "neo4j",
+      name: "neo4j-delta-1538055555_nam",
+      cronJobName: "neo4j-delta",
+      pods: ["neo4j-0", "neo4j-1"],
+    },
+    {
+      db: "elastic",
+      name: "elastic-delta-1538055555_nam",
+      cronJobName: "elastic-delta",
+      pods: ["elasticsearch-0", "elasticsearch-1"],
+    },
+  ];
+
   const mockExec = (count = 1, data = {}) => {
     for (var i = 0; i < count; i++) {
       child_process.exec.mockImplementationOnce((command, callback) =>
@@ -653,6 +668,49 @@ describe("Kubectl - createDeltaJobs", () => {
         "elastic-delta-1538055555 triggered :)",
         "neo4j-delta-1538055555 pods ready",
         "elastic-delta-1538055555 pods ready",
+      ];
+
+      expect(logs.every((log) => expected_logs.indexOf(log) > -1)).toBe(true);
+      console.log.mockRestore();
+      console_spy.mockClear;
+      done();
+    });
+  });
+
+  it("should create delta jobs with suffix and trigger them", (done) => {
+    mockExec(2, pod_status_ready);
+    mockExec(1, complete_job);
+    mockExec(2, pod_status_ready);
+    mockExec(2, pod_status_ready);
+    mockExec(1, complete_job);
+    mockExec(2, pod_status_ready);
+
+    child_process.spawn.mockImplementationOnce(() => ({
+      on: (command, callback) => callback(0),
+    }));
+
+    child_process.spawn.mockImplementationOnce(() => ({
+      on: (command, callback) => callback(0),
+    }));
+
+    const ingestParams = {
+      ingestName: "1538055555_nam",
+      ingestType: "incremental",
+    };
+    const console_spy = jest.spyOn(console, "log").mockImplementation(noop);
+
+    createDeltaJobs(ingestParams, deltajobs_suffix, (err, _ingestParams) => {
+      expect(ingestParams).toEqual(_ingestParams);
+
+      const logs = console_spy.mock.calls.map(([msg]) => {
+        return msg.split(": ")[1];
+      });
+
+      const expected_logs = [
+        "neo4j-delta-1538055555_nam triggered :)",
+        "elastic-delta-1538055555_nam triggered :)",
+        "neo4j-delta-1538055555_nam pods ready",
+        "elastic-delta-1538055555_nam pods ready",
       ];
 
       expect(logs.every((log) => expected_logs.indexOf(log) > -1)).toBe(true);
