@@ -40,13 +40,13 @@ const {
   getJobDuration,
   getPodStatus,
   getPodStartedAt,
-  Times
+  Times,
 } = require("./helpers");
 
 const {
   BUCKET: Bucket,
   KUBE_SERVICE_ACCOUNT_TOKEN,
-  NODE_ENV = "production"
+  NODE_ENV = "production",
 } = process.env;
 
 let timer = new Times();
@@ -56,7 +56,7 @@ let baseArgs = [
   "--namespace",
   "dacc-entitysearch-preprod",
   "--token",
-  KUBE_SERVICE_ACCOUNT_TOKEN
+  KUBE_SERVICE_ACCOUNT_TOKEN,
 ];
 
 if (NODE_ENV === "dev" || NODE_ENV === "test") {
@@ -85,17 +85,18 @@ function start(waitForManifest) {
     s3.listObjectsV2(
       { Bucket, Prefix: "preprod/", Delimiter: "" },
       (err, folder) => {
-
         console.log("After listing the s3 objects");
         if (!folder) {
           console.log("Folder is undefined");
         } else if (!folder.Contents) {
           console.log("Folder Content is undefined");
         } else if (!folder.Contents.length) {
-          console.log("Folder Content Length is undefined");  
+          console.log("Folder Content Length is undefined");
         } else {
-          console.log("Folder has content of length: " + folder.Contents.length);
-          folder.Contents.forEach(item => {
+          console.log(
+            "Folder has content of length: " + folder.Contents.length
+          );
+          folder.Contents.forEach((item) => {
             console.log("key: " + item.Key);
           });
         }
@@ -214,14 +215,14 @@ function deleteOldJobs(
       db: "neo4j",
       name: `neo4j-${jobType}-${ingestName}`,
       cronJobName: `neo4j-${jobType}`,
-      pods: ["neo4j-0"]
+      pods: ["neo4j-0"],
     },
     {
       db: "elastic",
       name: `elastic-${jobType}-${ingestName}`,
       cronJobName: `elastic-${jobType}`,
-      pods: ["elasticsearch-0"]
-    }
+      pods: ["elasticsearch-0"],
+    },
   ];
 
   deleteJobs.on("exit", () => {
@@ -311,38 +312,38 @@ function checkJobStatus(jobName, jobComplete) {
 }
 
 function waitForPods(job, next) {
-  const checks = R.map(podName => ready => checkPodStatus(podName, ready))(
+  const checks = R.map((podName) => (ready) => checkPodStatus(podName, ready))(
     job.pods
   );
-  async.parallel(checks, err => next(err));
+  async.parallel(checks, (err) => next(err));
 }
 
 function waitForRollingUpdate(job, timer, next) {
   const jobStartTime =
     job.db === "neo4j" ? timer.getNeoStart() : timer.getElasticStart();
 
-  const checks = R.map(podName => ready =>
+  const checks = R.map((podName) => (ready) =>
     checkRollingStatus(podName, jobStartTime, ready)
   )(job.pods);
-  async.parallel(checks, err => next(err));
+  async.parallel(checks, (err) => next(err));
 }
 
 function runJob(job, timer, callback) {
   async.waterfall(
     [
-      next => waitForPods(job, next),
-      next => {
+      (next) => waitForPods(job, next),
+      (next) => {
         const args = R.concat(baseArgs, [
           "create",
           "job",
           job.name,
           "--from",
-          `cronjob/${job.cronJobName}`
+          `cronjob/${job.cronJobName}`,
         ]);
 
         const jobPod = spawn("kubectl", args);
 
-        jobPod.on("exit", code => {
+        jobPod.on("exit", (code) => {
           const err =
             code !== 0
               ? new Error(`${job.name} exits with non zero code`)
@@ -350,7 +351,7 @@ function runJob(job, timer, callback) {
           next(err);
         });
       },
-      next => {
+      (next) => {
         job.db === "neo4j" ? timer.setNeoStart() : timer.setElasticStart();
 
         console.log(
@@ -361,10 +362,10 @@ function runJob(job, timer, callback) {
 
         checkJobStatus(job.name, next);
       },
-      next => setTimeout(next, pollingInterval), //wait for drone to trigger a rolling update
-      next => waitForRollingUpdate(job, timer, next) // wait for the updates to roll through the cluster
+      (next) => setTimeout(next, pollingInterval), //wait for drone to trigger a rolling update
+      (next) => waitForRollingUpdate(job, timer, next), // wait for the updates to roll through the cluster
     ],
-    err => {
+    (err) => {
       if (!err) {
         job.db === "neo4j" ? timer.setNeoEnd() : timer.setElasticEnd();
 
@@ -382,8 +383,11 @@ function createBulkJobs(ingestParams, jobs, waitForCompletion) {
   const [neo4j, elastic] = jobs;
 
   async.parallel(
-    [done => runJob(neo4j, timer, done), done => runJob(elastic, timer, done)],
-    err => {
+    [
+      (done) => runJob(neo4j, timer, done),
+      (done) => runJob(elastic, timer, done),
+    ],
+    (err) => {
       waitForCompletion(err, ingestParams, timer, start);
     }
   );
@@ -393,7 +397,7 @@ function createDeltaJobs(ingestParams, jobs, waitForCompletion) {
   async.eachSeries(
     jobs,
     (job, done) => runJob(job, timer, done),
-    err => {
+    (err) => {
       waitForCompletion(err, ingestParams, timer, start);
     }
   );
@@ -429,11 +433,11 @@ function waitForCompletion(err, { ingestType, ingestName }, timer, start) {
       Bucket,
       Delete: {
         Objects: timer.getIngestFiles(),
-        Quiet: true
-      }
+        Quiet: true,
+      },
     };
 
-    s3.deleteObjects(deleteParams, err => {
+    s3.deleteObjects(deleteParams, (err) => {
       const ingestEndTime = moment(new Date());
 
       if (err) {
@@ -459,7 +463,10 @@ function waitForCompletion(err, { ingestType, ingestName }, timer, start) {
             timer.getElasticStart(),
             timer.getElasticEnd()
           ),
-          total_job_duration: getJobDuration(timer.getNeoStart(), ingestEndTime)
+          total_job_duration: getJobDuration(
+            timer.getNeoStart(),
+            ingestEndTime
+          ),
         };
 
         console.log(
@@ -491,5 +498,5 @@ module.exports = {
   runJob,
   createBulkJobs,
   createDeltaJobs,
-  enterErrorState
+  enterErrorState,
 };
