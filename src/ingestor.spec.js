@@ -412,8 +412,8 @@ describe("Kubectl - waitForPods", () => {
 
 describe("Kubectl - runJob", () => {
   beforeEach(() => {
-    child_process.exec.mockClear;
-    child_process.spawn.mockClear;
+    child_process.exec.mockClear();
+    child_process.spawn.mockClear();
 
     child_process.exec.mockImplementationOnce((command, callback) =>
       callback(false, JSON.stringify(pod_status_ready))
@@ -483,7 +483,6 @@ describe("Kubectl - runJob", () => {
       expect(err).toBeFalsy();
       expect(log).toBe("neo4j-delta-1538055240 triggered :)");
       console.log.mockRestore();
-      console_log.mockClear();
       done();
     });
   });
@@ -514,8 +513,8 @@ describe("Kubectl - createBulkJobs", () => {
   };
 
   beforeEach(() => {
-    child_process.exec.mockClear;
-    child_process.spawn.mockClear;
+    child_process.exec.mockClear();
+    child_process.spawn.mockClear();
   });
 
   it("should handle errors", (done) => {
@@ -567,7 +566,7 @@ describe("Kubectl - createBulkJobs", () => {
 
       expect(logs.every((log) => expected_logs.indexOf(log) > -1)).toBe(true);
       console.log.mockRestore();
-      console_spy.mockClear();
+      console_spy.mockClear;
       done();
     });
   });
@@ -598,8 +597,8 @@ describe("Kubectl - createDeltaJobs", () => {
   };
 
   beforeEach(() => {
-    child_process.exec.mockClear;
-    child_process.spawn.mockClear;
+    child_process.exec.mockClear();
+    child_process.spawn.mockClear();
   });
 
   it("should handle errors", (done) => {
@@ -658,7 +657,7 @@ describe("Kubectl - createDeltaJobs", () => {
 
       expect(logs.every((log) => expected_logs.indexOf(log) > -1)).toBe(true);
       console.log.mockRestore();
-      console_spy.mockClear();
+      console_spy.mockClear;
       done();
     });
   });
