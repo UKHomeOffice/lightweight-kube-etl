@@ -532,7 +532,7 @@ describe("Kubectl - createBulkJobs", () => {
     });
   });
 
-  it("should create bulk jobs and trigger them", (done) => {
+  it("should create bulk jobs and trigger them", async (done) => {
     const ingestParams = { ingestName: "1538055555", ingestType: "bulk" };
     const console_spy = jest.spyOn(console, "log").mockImplementation(noop);
 
