@@ -67,6 +67,14 @@ const complete_job = {
   },
 };
 
+const mockExec = (count = 1, data = {}) => {
+  for (var i = 0; i < count; i++) {
+    child_process.exec.mockImplementationOnce((command, callback) =>
+      callback(false, JSON.stringify(data))
+    );
+  }
+};
+
 describe("Kubectl - getOldJobs", () => {
   it("should, on error, enter an error state", (done) => {
     const errorMessage = "kubectl error";
@@ -504,14 +512,6 @@ describe("Kubectl - createBulkJobs", () => {
     },
   ];
 
-  const mockExec = (count = 1, data = {}) => {
-    for (var i = 0; i < count; i++) {
-      child_process.exec.mockImplementationOnce((command, callback) =>
-        callback(false, JSON.stringify(data))
-      );
-    }
-  };
-
   beforeEach(() => {
     child_process.exec.mockClear();
     child_process.spawn.mockClear();
@@ -602,14 +602,6 @@ describe("Kubectl - createDeltaJobs", () => {
       pods: ["elasticsearch-0", "elasticsearch-1"],
     },
   ];
-
-  const mockExec = (count = 1, data = {}) => {
-    for (var i = 0; i < count; i++) {
-      child_process.exec.mockImplementationOnce((command, callback) =>
-        callback(false, JSON.stringify(data))
-      );
-    }
-  };
 
   beforeEach(() => {
     child_process.exec.mockClear();
