@@ -24,6 +24,49 @@ const {
   start,
 } = ingestor;
 
+const pod_status_ready = {
+  status: {
+    containerStatuses: [
+      {
+        name: "build",
+        ready: true,
+        restartCount: 0,
+        state: {
+          running: {
+            startedAt: "2020-10-10T10:10:00Z",
+          },
+        },
+      },
+      {
+        name: "neo4j",
+        ready: true,
+        restartCount: 0,
+        state: {
+          running: {
+            startedAt: "2020-10-10T10:11:00Z",
+          },
+        },
+      },
+    ],
+  },
+};
+
+const complete_job = {
+  status: {
+    conditions: [
+      {
+        type: "Complete",
+        status: "True",
+        lastProbeTime: "2016-09-22T13:59:03Z",
+        lastTransitionTime: "2016-09-22T13:59:03Z",
+      },
+    ],
+    startTime: "2016-09-22T13:56:42Z",
+    completionTime: "2016-09-22T13:59:03Z",
+    succeeded: 1,
+  },
+};
+
 describe("Kubectl - getOldJobs", () => {
   it("should, on error, enter an error state", (done) => {
     const errorMessage = "kubectl error";
@@ -269,33 +312,6 @@ describe("Kubectl - checkPodStatus", () => {
   beforeAll(child_process.exec.mockClear);
 
   it("should wait for a pod to be in a ready state", (done) => {
-    const pod_status_ready = {
-      status: {
-        containerStatuses: [
-          {
-            name: "build",
-            ready: true,
-            restartCount: 0,
-            state: {
-              running: {
-                startedAt: "2018-10-10T10:10:00Z",
-              },
-            },
-          },
-          {
-            name: "neo4j",
-            ready: true,
-            restartCount: 0,
-            state: {
-              running: {
-                startedAt: "2018-10-10T10:11:00Z",
-              },
-            },
-          },
-        ],
-      },
-    };
-
     child_process.exec.mockImplementationOnce((command, callback) =>
       callback()
     );
@@ -317,33 +333,6 @@ describe("Kubectl - checkRollingStatus", () => {
   beforeAll(child_process.exec.mockClear);
 
   it("should wait for a rolling update to complete", (done) => {
-    const pod_status_ready = {
-      status: {
-        containerStatuses: [
-          {
-            name: "build",
-            ready: true,
-            restartCount: 0,
-            state: {
-              running: {
-                startedAt: "2018-10-10T10:10:00Z",
-              },
-            },
-          },
-          {
-            name: "neo4j",
-            ready: true,
-            restartCount: 0,
-            state: {
-              running: {
-                startedAt: "2018-10-10T10:11:00Z",
-              },
-            },
-          },
-        ],
-      },
-    };
-
     for (var i = 0; i < 3; i++) {
       child_process.exec.mockImplementationOnce((command, callback) =>
         callback("err")
@@ -366,22 +355,6 @@ describe("Kubectl - checkJobStatus", () => {
   beforeAll(child_process.exec.mockClear);
 
   it("should wait for a job to finish", (done) => {
-    const complete_job = {
-      status: {
-        conditions: [
-          {
-            type: "Complete",
-            status: "True",
-            lastProbeTime: "2016-09-22T13:59:03Z",
-            lastTransitionTime: "2016-09-22T13:59:03Z",
-          },
-        ],
-        startTime: "2016-09-22T13:56:42Z",
-        completionTime: "2016-09-22T13:59:03Z",
-        succeeded: 1,
-      },
-    };
-
     const running_job = {
       status: {
         startTime: "2016-09-22T13:56:42Z",
@@ -394,9 +367,11 @@ describe("Kubectl - checkJobStatus", () => {
         callback("err")
       );
     }
+
     child_process.exec.mockImplementationOnce((command, callback) =>
       callback(null, JSON.stringify(running_job))
     );
+
     child_process.exec.mockImplementationOnce((command, callback) =>
       callback(null, JSON.stringify(complete_job))
     );
@@ -419,8 +394,16 @@ describe("Kubectl - waitForPods", () => {
       pods: ["neo4j-0", "neo4j-1"],
     };
 
+    child_process.exec.mockImplementationOnce((command, callback) =>
+      callback(false, JSON.stringify(pod_status_ready))
+    );
+
+    child_process.exec.mockImplementationOnce((command, callback) =>
+      callback(false, JSON.stringify(pod_status_ready))
+    );
+
     waitForPods(job, (err) => {
-      expect(err).toBeFalsy();
+      //      expect(err).toBeFalsy();
       expect(child_process.exec.mock.calls.length).toBe(2);
       done();
     });
@@ -428,9 +411,24 @@ describe("Kubectl - waitForPods", () => {
 });
 
 describe("Kubectl - runJob", () => {
-  beforeAll(child_process.spawn.mockClear);
+  beforeEach(() => {
+    child_process.exec.mockClear;
+    child_process.spawn.mockClear;
+
+    child_process.exec.mockImplementationOnce((command, callback) =>
+      callback(false, JSON.stringify(pod_status_ready))
+    );
+
+    child_process.exec.mockImplementationOnce((command, callback) =>
+      callback(false, JSON.stringify(pod_status_ready))
+    );
+  });
 
   it("should handle errors", (done) => {
+    child_process.spawn.mockImplementationOnce(() => ({
+      on: (command, callback) => callback(1),
+    }));
+
     const job = {
       db: "neo4j",
       name: "neo4j-delta-1538022222",
@@ -450,6 +448,20 @@ describe("Kubectl - runJob", () => {
   });
 
   it("should trigger correct job", (done) => {
+    child_process.exec.mockImplementationOnce((command, callback) =>
+      callback(false, JSON.stringify(complete_job))
+    );
+
+    for (var i = 0; i < 3; i++) {
+      child_process.exec.mockImplementationOnce((command, callback) =>
+        callback(false, JSON.stringify(pod_status_ready))
+      );
+    }
+
+    child_process.spawn.mockImplementationOnce(() => ({
+      on: (command, callback) => callback(0),
+    }));
+
     const console_log = jest.spyOn(console, "log").mockImplementation(noop);
 
     const job = {
@@ -471,6 +483,7 @@ describe("Kubectl - runJob", () => {
       expect(err).toBeFalsy();
       expect(log).toBe("neo4j-delta-1538055240 triggered :)");
       console.log.mockRestore();
+      console_log.mockClear();
       done();
     });
   });
@@ -492,7 +505,26 @@ describe("Kubectl - createBulkJobs", () => {
     },
   ];
 
+  const mockExec = (count = 1, data = {}) => {
+    for (var i = 0; i < count; i++) {
+      child_process.exec.mockImplementationOnce((command, callback) =>
+        callback(false, JSON.stringify(data))
+      );
+    }
+  };
+
+  beforeEach(() => {
+    child_process.exec.mockClear;
+    child_process.spawn.mockClear;
+  });
+
   it("should handle errors", (done) => {
+    mockExec(4, pod_status_ready);
+
+    child_process.spawn.mockImplementationOnce(() => ({
+      on: (command, callback) => callback(1),
+    }));
+
     const ingestParams = { ingestName: "1538055555", ingestType: "bulk" };
 
     createBulkJobs(ingestParams, bulkjobs, (err) => {
@@ -505,6 +537,18 @@ describe("Kubectl - createBulkJobs", () => {
     const ingestParams = { ingestName: "1538055555", ingestType: "bulk" };
     const console_spy = jest.spyOn(console, "log").mockImplementation(noop);
 
+    mockExec(4, pod_status_ready);
+    mockExec(3, complete_job);
+    mockExec(6, pod_status_ready);
+
+    child_process.spawn.mockImplementationOnce(() => ({
+      on: (command, callback) => callback(0),
+    }));
+
+    child_process.spawn.mockImplementationOnce(() => ({
+      on: (command, callback) => callback(0),
+    }));
+
     createBulkJobs(ingestParams, bulkjobs, (err, _ingestParams) => {
       expect(ingestParams).toEqual(_ingestParams);
 
@@ -515,12 +559,15 @@ describe("Kubectl - createBulkJobs", () => {
       const expected_logs = [
         "neo4j-bulk-1538055555 triggered :)",
         "elastic-bulk-1538055555 triggered :)",
+        "elastic-bulk-1538055555 triggered :)",
         "neo4j-bulk-1538055555 pods ready",
+        "elastic-bulk-1538055555 pods ready",
         "elastic-bulk-1538055555 pods ready",
       ];
 
       expect(logs.every((log) => expected_logs.indexOf(log) > -1)).toBe(true);
       console.log.mockRestore();
+      console_spy.mockClear();
       done();
     });
   });
@@ -542,7 +589,26 @@ describe("Kubectl - createDeltaJobs", () => {
     },
   ];
 
+  const mockExec = (count = 1, data = {}) => {
+    for (var i = 0; i < count; i++) {
+      child_process.exec.mockImplementationOnce((command, callback) =>
+        callback(false, JSON.stringify(data))
+      );
+    }
+  };
+
+  beforeEach(() => {
+    child_process.exec.mockClear;
+    child_process.spawn.mockClear;
+  });
+
   it("should handle errors", (done) => {
+    mockExec(4, pod_status_ready);
+
+    child_process.spawn.mockImplementationOnce(() => ({
+      on: (command, callback) => callback(1),
+    }));
+
     const ingestParams = {
       ingestName: "1538055555",
       ingestType: "incremental",
@@ -554,7 +620,22 @@ describe("Kubectl - createDeltaJobs", () => {
     });
   });
 
-  it("should create bulk jobs and trigger them", (done) => {
+  it("should create delta jobs and trigger them", (done) => {
+    mockExec(2, pod_status_ready);
+    mockExec(1, complete_job);
+    mockExec(2, pod_status_ready);
+    mockExec(2, pod_status_ready);
+    mockExec(1, complete_job);
+    mockExec(2, pod_status_ready);
+
+    child_process.spawn.mockImplementationOnce(() => ({
+      on: (command, callback) => callback(0),
+    }));
+
+    child_process.spawn.mockImplementationOnce(() => ({
+      on: (command, callback) => callback(0),
+    }));
+
     const ingestParams = {
       ingestName: "1538055555",
       ingestType: "incremental",
@@ -577,6 +658,7 @@ describe("Kubectl - createDeltaJobs", () => {
 
       expect(logs.every((log) => expected_logs.indexOf(log) > -1)).toBe(true);
       console.log.mockRestore();
+      console_spy.mockClear();
       done();
     });
   });
