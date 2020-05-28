@@ -2,6 +2,7 @@ const moment = require("moment");
 const { s3_samples } = require("./__mocks__/s3-client");
 
 const {
+  getTimeStamp,
   isTimestamp,
   hasTimestampFolders,
   getIngestJobParams,
@@ -110,6 +111,17 @@ const pod_not_ready = {
 };
 
 describe("Helper Functions", () => {
+  it("should return timestamp portion of folder name when it does not have a suffix", () => {
+    const ts = "1234567890";
+    expect(getTimeStamp(ts)).toEqual(ts);
+  });
+
+  it("should return timestamp portion of folder name when it does have a suffix", () => {
+    const ts = "1234567890";
+    const tsWithSuffix = ts + "_nam";
+    expect(getTimeStamp(tsWithSuffix)).toEqual(ts);
+  });
+
   it("can tell if something is a timestamp", () => {
     const ts = 1538055250;
 

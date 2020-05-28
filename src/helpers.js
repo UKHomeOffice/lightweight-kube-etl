@@ -11,10 +11,13 @@ const moment = require("moment");
 .##.....##.########.########.##........########.##.....##..######.
 */
 
-const getTimeStamp = (ts) => R.split("_", ts.toString())[0];
+const getTimeStamp = R.compose(
+  R.head,
+  R.split("_")
+);
 
 const isTimestamp = (label) =>
-  !!(label && moment.unix(getTimeStamp(label)).isValid());
+  !!(label && moment.unix(getTimeStamp(label.toString())).isValid());
 
 const hasTimestampFolders = R.compose(
   R.any(isTimestamp),
@@ -173,6 +176,7 @@ class Times {
 }
 
 module.exports = {
+  getTimeStamp,
   isTimestamp,
   hasTimestampFolders,
   getIngestJobParams,
