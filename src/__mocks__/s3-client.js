@@ -7,86 +7,86 @@ const s3_samples = {
   no_ts_folders: {
     Contents: [
       {
-        Key: 'preprod/pending/.DS_Store'
+        Key: 'pending/.DS_Store'
       },
       {
-        Key: 'preprod/pending/manifest.json'
+        Key: 'pending/manifest.json'
       }
     ]
   },
   ts_folders_no_manifest: {
     Contents: [
       {
-        Key: 'preprod/pending/1538055240/person/person_headers.csv.gz'
+        Key: 'pending/1538055240/person/person_headers.csv.gz'
       },
       {
-        Key: 'preprod/pending/1538055240/bulk.txt'
+        Key: 'pending/1538055240/bulk.txt'
       },
       {
-        Key: 'preprod/pending/1538055250/person/person_headers.csv.gz'
+        Key: 'pending/1538055250/person/person_headers.csv.gz'
       },
       {
-        Key: 'preprod/pending/1538055250/person/person_sample.csv.gz'
+        Key: 'pending/1538055250/person/person_sample.csv.gz'
       }
     ]
   },
   ts_folders: {
     Contents: [
       {
-        Key: 'preprod/pending/.DS_Store'
+        Key: 'pending/.DS_Store'
       },
       {
-        Key: 'preprod/pending/manifest.json'
+        Key: 'pending/manifest.json'
       },
       {
-        Key: 'preprod/pending/1538055240/person/person_headers.csv.gz'
+        Key: 'pending/1538055240/person/person_headers.csv.gz'
       },
       {
-        Key: 'preprod/pending/1538055240/bulk.txt'
+        Key: 'pending/1538055240/bulk.txt'
       },
       {
-        Key: 'preprod/pending/1538055240/manifest.json'
+        Key: 'pending/1538055240/manifest.json'
       },
       {
-        Key: 'preprod/pending/1538055250/person/person_headers.csv.gz'
+        Key: 'pending/1538055250/person/person_headers.csv.gz'
       },
       {
-        Key: 'preprod/pending/1538055250/person/person_sample.csv.gz'
+        Key: 'pending/1538055250/person/person_sample.csv.gz'
       }
     ]
   },
   bad_folders: {
     Contents: [
       {
-        Key: 'preprod/pending/.DS_Store'
+        Key: 'pending/.DS_Store'
       },
       {
-        Key: 'preprod/pending/1538055240/person/person_headers.csv.gz'
+        Key: 'pending/1538055240/person/person_headers.csv.gz'
       }
     ]
   },
   out_of_order_folders: {
     Contents: [
       {
-        Key: 'preprod/pending/2222'
+        Key: 'pending/2222'
       },
       {
-        Key: 'preprod/pending/2222/bulk.txt'
+        Key: 'pending/2222/bulk.txt'
       },
       {
-        Key: 'preprod/pending/2222/manifest.json'
+        Key: 'pending/2222/manifest.json'
       },
       {
-        Key: 'preprod/pending/1111'
+        Key: 'pending/1111'
       },
       {
-        Key: 'preprod/pending/1111/incremental.txt'
+        Key: 'pending/1111/incremental.txt'
       },
       {
-        Key: 'preprod/pending/3333'
+        Key: 'pending/3333'
       },
       {
-        Key: 'preprod/pending/3333/incremental.txt'
+        Key: 'pending/3333/incremental.txt'
       }
     ]
   }
@@ -113,9 +113,9 @@ const deleteObjects = jest.fn()
 module.exports = {
   listObjectsV2: jest.fn().mockImplementation(({Bucket, Prefix}, callback) => {
     let reply;
-    if (Prefix === 'preprod/pending/') {
+    if (Prefix === 'pending/') {
       reply = ts_folders();
-    } else if (Prefix === 'preprod/pending/1538055240/manifest.json') {
+    } else if (Prefix === 'pending/1538055240/manifest.json') {
       reply = manifest_folders();
     }
 
