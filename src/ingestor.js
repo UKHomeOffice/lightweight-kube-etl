@@ -211,13 +211,13 @@ function deleteOldJobs(
       db: "neo4j",
       name: `neo4j-${jobType}-${ingestName}`,
       cronJobName: `neo4j-${jobType}`,
-      pods: ["neo4j-0"],
+      pods: ["neo4j-0","neo4j-1"],
     },
     {
       db: "elastic",
       name: `elastic-${jobType}-${ingestName}`,
       cronJobName: `elastic-${jobType}`,
-      pods: ["elasticsearch-0"],
+      pods: ["elasticsearch-0","elasticsearch-1"],
     },
   ];
 
