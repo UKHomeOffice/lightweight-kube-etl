@@ -257,13 +257,13 @@ describe("Kubectl - deleteOldJobs", () => {
         db: "neo4j",
         name: "neo4j-bulk-1538055240",
         cronJobName: "neo4j-bulk",
-        pods: ["neo4j-0"],
+        pods: ["neo4j-0","neo4j-1"],
       },
       {
         db: "elastic",
         name: "elastic-bulk-1538055240",
         cronJobName: "elastic-bulk",
-        pods: ["elasticsearch-0"],
+        pods: ["elasticsearch-0", "elasticsearch-1"],
       },
     ];
 
@@ -294,13 +294,13 @@ describe("Kubectl - deleteOldJobs", () => {
         db: "neo4j",
         name: "neo4j-delta-1538055240",
         cronJobName: "neo4j-delta",
-        pods: ["neo4j-0"],
+        pods: ["neo4j-0","neo4j-1"],
       },
       {
         db: "elastic",
         name: "elastic-delta-1538055240",
         cronJobName: "elastic-delta",
-        pods: ["elasticsearch-0"],
+        pods: ["elasticsearch-0", "elasticsearch-1"],
       },
     ];
 
