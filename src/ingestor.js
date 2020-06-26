@@ -273,6 +273,7 @@ function checkPodStatus(podName, podReady) {
 
       try {
         ready = getPodStatus(JSON.parse(stdout));
+        console.log("Pod ready -- " + ready)
       } catch (err) {
         ready = false;
       }
@@ -308,6 +309,7 @@ function checkJobStatus(jobName, jobComplete) {
 }
 
 function waitForPods(job, next) {
+  console.log("Waiting for pods ")
   const checks = R.map((podName) => (ready) => checkPodStatus(podName, ready))(
     job.pods
   );
@@ -325,6 +327,7 @@ function waitForRollingUpdate(job, timer, next) {
 }
 
 function runJob(job, timer, callback) {
+  console.log ("Run Job" + job.name)
   async.waterfall(
     [
       (next) => waitForPods(job, next),
@@ -376,6 +379,7 @@ function runJob(job, timer, callback) {
 }
 
 function createBulkJobs(ingestParams, jobs, waitForCompletion) {
+  console.log("Creating bulk jobs -- " + JSON.stringify(jobs))
   const [neo4j, elastic] = jobs;
 
   async.parallel(
@@ -390,6 +394,7 @@ function createBulkJobs(ingestParams, jobs, waitForCompletion) {
 }
 
 function createDeltaJobs(ingestParams, jobs, waitForCompletion) {
+  console.log("Creating delta jobs -- " + JSON.stringify(jobs))
   async.eachSeries(
     jobs,
     (job, done) => runJob(job, timer, done),
