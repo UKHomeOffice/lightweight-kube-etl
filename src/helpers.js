@@ -16,8 +16,7 @@ const getTimeStamp = R.compose(
   R.split("_")
 );
 
-const isTimestamp = (label) =>
-  !!(label && moment.unix(getTimeStamp(label.toString())).isValid());
+const isTimestamp = label => !!(label && moment.unix(label).isValid());
 
 const hasTimestampFolders = R.compose(
   R.any(isTimestamp),
@@ -32,42 +31,46 @@ const hasTimestampFolders = R.compose(
   R.prop("Contents")
 );
 
-const getIngestJobParams = (folder) => {
-  const oldestFolder = R.compose(
-    R.head,
-    R.sort((older, newer) => getTimeStamp(older[1]) > getTimeStamp(newer[1])),
-    R.filter(
-      R.compose(
-        R.contains(R.__, ["bulk.txt", "incremental.txt"]),
-        R.last
-      )
-    ),
-    R.map(R.take(3)),
-    R.map(
-      R.compose(
-        R.split("/"),
-        R.prop("Key")
-      )
-    ),
-    R.prop("Contents")
-  )(folder);
+const getOldestFolder = R.compose(
+  R.head,
+  R.sort((older, newer) => new Date(getTimeStamp(older[1])) - new Date(getTimeStamp(newer[1]))),
+  R.filter(
+    R.compose(
+      R.contains(R.__, ["bulk.txt", "incremental.txt"]),
+      R.last
+    )
+  ),
+  R.map(R.take(3)),
+  R.map(
+    R.compose(
+      R.split("/"),
+      R.prop("Key")
+    )
+  ),
+  R.prop("Contents")
+);
+
+const getIngestParams = R.compose(
+  R.evolve({ ingestType: R.replace(".txt", "") }),
+  R.zipObj(["ingestName", "ingestType"]),
+  R.tail
+);
+
+const getIngestJobParams = folder => {
+  const oldestFolder = getOldestFolder(folder);
 
   if (!oldestFolder) return;
 
-  return R.compose(
-    R.evolve({ingestType: R.replace(".txt", "")}),
-    R.zipObj(["ingestName", "ingestType"]),
-    R.tail
-  )(oldestFolder);
+  return getIngestParams(oldestFolder);
 };
 
-const getJobLabels = (forIngestType) =>
+const getJobLabels = forIngestType =>
   R.compose(
-  R.filter(R.test(forIngestType)),
+    R.filter(R.test(forIngestType)),
     R.map(R.path(["metadata", "name"])),
-  R.filter(filterJobs),
+    R.filter(filterJobs),
     R.prop("items")
-);
+  );
 
 const filterJobs = R.compose(
   R.gt(R.__, 0),
@@ -81,10 +84,7 @@ const getStatus = R.pathOr(false, ["status", "succeeded"]);
 
 const getIngestFiles = ({ ingestName }) =>
   R.compose(
-    R.concat([
-      { Key: `pending/${ingestName}/manifest.json` },
-      { Key: `pending/${ingestName}` },
-    ]),
+    R.concat([{ Key: `pending/${ingestName}/manifest.json` }, { Key: `pending/${ingestName}` }]),
     R.filter(
       R.compose(
         R.contains(ingestName),
@@ -94,15 +94,15 @@ const getIngestFiles = ({ ingestName }) =>
     ),
     R.map(R.pick(["Key"])),
     R.prop("Contents")
-);
+  );
 
 const getJobDuration = (start, end) => {
   if (!end || !end.diff) return "timestamp error";
-  
+
   const seconds = end.diff(start, "seconds");
   const hours = Math.floor(seconds / 3600) % 24;
   const minutes = Math.floor(seconds / 60) % 60;
-  
+
   return `${hours}h:${minutes < 10 ? `0${minutes}` : minutes}mins`;
 };
 
@@ -121,7 +121,7 @@ const getPodStartedAt = R.compose(
 );
 
 class Times {
-  constructor () {
+  constructor() {
     this.neoStart = null;
     this.neoEnd = null;
     this.elasticStart = null;
@@ -166,7 +166,7 @@ class Times {
     return moment(this.neoEnd).isValid() && moment(this.elasticEnd).isValid();
   }
 
-  reset () {
+  reset() {
     this.neoStart = null;
     this.neoEnd = null;
     this.elasticStart = null;
@@ -176,9 +176,10 @@ class Times {
 }
 
 module.exports = {
-  getTimeStamp,
   isTimestamp,
   hasTimestampFolders,
+  getOldestFolder,
+  getIngestParams,
   getIngestJobParams,
   getJobLabels,
   filterJobs,
@@ -187,5 +188,5 @@ module.exports = {
   getJobDuration,
   getPodStatus,
   getPodStartedAt,
-  Times,
+  Times
 };

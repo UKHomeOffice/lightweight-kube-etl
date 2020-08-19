@@ -2,7 +2,6 @@ const moment = require("moment");
 const { s3_samples } = require("./__mocks__/s3-client");
 
 const {
-  getTimeStamp,
   isTimestamp,
   hasTimestampFolders,
   getIngestJobParams,
@@ -13,7 +12,8 @@ const {
   getJobDuration,
   getPodStatus,
   getPodStartedAt,
-  Times,
+  getOldestFolder,
+  Times
 } = require("./helpers");
 
 const complete_job = {
@@ -23,20 +23,20 @@ const complete_job = {
         type: "Complete",
         status: "True",
         lastProbeTime: "2016-09-22T13:59:03Z",
-        lastTransitionTime: "2016-09-22T13:59:03Z",
-      },
+        lastTransitionTime: "2016-09-22T13:59:03Z"
+      }
     ],
     startTime: "2016-09-22T13:56:42Z",
     completionTime: "2016-09-22T13:59:03Z",
-    succeeded: 1,
-  },
+    succeeded: 1
+  }
 };
 
 const running_job = {
   status: {
     startTime: "2016-09-22T13:56:42Z",
-    active: 1,
-  },
+    active: 1
+  }
 };
 
 const pod_status_ready = {
@@ -48,9 +48,9 @@ const pod_status_ready = {
         restartCount: 0,
         state: {
           running: {
-            startedAt: "2018-10-10T10:10:00Z",
-          },
-        },
+            startedAt: "2018-10-10T10:10:00Z"
+          }
+        }
       },
       {
         name: "neo4j",
@@ -58,12 +58,12 @@ const pod_status_ready = {
         restartCount: 0,
         state: {
           running: {
-            startedAt: "2018-10-10T10:11:00Z",
-          },
-        },
-      },
-    ],
-  },
+            startedAt: "2018-10-10T10:11:00Z"
+          }
+        }
+      }
+    ]
+  }
 };
 
 const pod_status_not_ready = {
@@ -75,9 +75,9 @@ const pod_status_not_ready = {
         restartCount: 0,
         state: {
           running: {
-            startedAt: "2018-10-09T10:10:00Z",
-          },
-        },
+            startedAt: "2018-10-09T10:10:00Z"
+          }
+        }
       },
       {
         name: "neo4j",
@@ -85,12 +85,12 @@ const pod_status_not_ready = {
         restartCount: 0,
         state: {
           running: {
-            startedAt: "2018-10-10T10:11:00Z",
-          },
-        },
-      },
-    ],
-  },
+            startedAt: "2018-10-10T10:11:00Z"
+          }
+        }
+      }
+    ]
+  }
 };
 
 const pod_not_ready = {
@@ -102,73 +102,45 @@ const pod_not_ready = {
         restartCount: 0,
         state: {
           running: {
-            startedAt: "2018-10-09T10:10:00Z",
-          },
-        },
-      },
-    ],
-  },
+            startedAt: "2018-10-09T10:10:00Z"
+          }
+        }
+      }
+    ]
+  }
 };
 
 describe("Helper Functions", () => {
-  it("should return timestamp portion of folder name when it does not have a suffix", () => {
-    const ts = "1234567890";
-    expect(getTimeStamp(ts)).toEqual(ts);
-  });
-
-  it("should return timestamp portion of folder name when it does have a suffix", () => {
-    const ts = "1234567890";
-    const tsWithSuffix = ts + "_nam";
-    expect(getTimeStamp(tsWithSuffix)).toEqual(ts);
-  });
-
   it("can tell if something is a timestamp", () => {
     const ts = 1538055250;
 
     expect(isTimestamp(ts)).toBe(true);
     expect(isTimestamp(null)).toBe(false);
     expect(isTimestamp("str")).toBe(false);
-    expect(isTimestamp(ts.toString())).toBe(true);
-    expect(isTimestamp(ts.toString() + "_nam")).toBe(true);
+    expect(isTimestamp("1538055250")).toBe(true);
   });
-  
+
   it("can filter timestamped folders from s3", () => {
     expect(hasTimestampFolders(s3_samples.no_ts_folders)).toBe(false);
     expect(hasTimestampFolders(s3_samples.ts_folders)).toBe(true);
-    expect(hasTimestampFolders(s3_samples.ts_folders_suffix)).toBe(true);
+  });
+
+  it("returns the oldest timestamped bulk/delta from a list of S3 objects", () => {
+    const actualResult = getOldestFolder(s3_samples.out_of_order_folders); //?
+    const expectedResults = ["pending", "1111", "incremental.txt"];
+
+    expect(actualResult).toEqual(expectedResults);
   });
 
   it("extracts the oldest timestamped folder from a list", () => {
-    const { ingestType, ingestName } = getIngestJobParams(
-      s3_samples.ts_folders
-    );
+    const { ingestType, ingestName } = getIngestJobParams(s3_samples.ts_folders);
 
     expect(ingestType).toBe("bulk");
     expect(ingestName).toBe("1538055240");
   });
 
-  it("extracts the oldest timestamped folder from a list with suffix", () => {
-    const { ingestType, ingestName } = getIngestJobParams(
-      s3_samples.ts_folders_suffix
-    );
-
-    expect(ingestType).toBe("bulk");
-    expect(ingestName).toBe("1538055240_nam");
-  });
-
   it("extracts the oldest timestamped folder from a list", () => {
-    const { ingestType, ingestName } = getIngestJobParams(
-      s3_samples.out_of_order_folders
-    );
-
-    expect(ingestType).toBe("incremental");
-    expect(ingestName).toBe("1111");
-  });
-
-  it("extracts the oldest timestamped folder from a list with suffix", () => {
-    const { ingestType, ingestName } = getIngestJobParams(
-      s3_samples.out_of_order_folders_suffix
-    );
+    const { ingestType, ingestName } = getIngestJobParams(s3_samples.out_of_order_folders);
 
     expect(ingestType).toBe("incremental");
     expect(ingestName).toBe("1111");
@@ -185,31 +157,31 @@ describe("Helper Functions", () => {
       items: [
         {
           metadata: {
-            name: "neo4j-bulk-123456",
-          },
+            name: "neo4j-bulk-123456"
+          }
         },
         {
           metadata: {
-            name: "neo4j-delta-123456",
-          },
+            name: "neo4j-delta-123456"
+          }
         },
         {
           metadata: {
-            name: "elastic-bulk-123456",
-          },
+            name: "elastic-bulk-123456"
+          }
         },
         {
           metadata: {
-            name: "elastic-delta-123456",
-          },
-        },
-      ],
+            name: "elastic-delta-123456"
+          }
+        }
+      ]
     };
 
     const filterThis = {
       metadata: {
-        name: "download-job",
-      },
+        name: "download-job"
+      }
     };
 
     const type = new RegExp(/-delta-/);
@@ -217,10 +189,7 @@ describe("Helper Functions", () => {
     const label = getJobLabels(type);
 
     expect(typeof label).toBe("function");
-    expect(label(result)).toEqual([
-      "neo4j-delta-123456",
-      "elastic-delta-123456",
-    ]);
+    expect(label(result)).toEqual(["neo4j-delta-123456", "elastic-delta-123456"]);
     expect(filterJobs(filterThis)).toBe(false);
     expect(filterJobs(result.items[0])).toBe(true);
   });
@@ -235,12 +204,12 @@ describe("Helper Functions", () => {
       { Key: "pending/1538055250/manifest.json" },
       { Key: "pending/1538055250" },
       { Key: "pending/1538055250/person/person_headers.csv.gz" },
-      { Key: "pending/1538055250/person/person_sample.csv.gz" },
+      { Key: "pending/1538055250/person/person_sample.csv.gz" }
     ];
 
     const params = {
       ingestType: "bulk",
-      ingestName: "1538055250",
+      ingestName: "1538055250"
     };
 
     const files = getIngestFiles(params)(s3_samples.ts_folders);
@@ -261,7 +230,7 @@ describe("Helper Functions", () => {
 
   it("should be able to find the status of a pod", () => {
     const pod_ready = getPodStatus(pod_status_ready);
-    const pod_false_ready =  getPodStatus(pod_not_ready);
+    const pod_false_ready = getPodStatus(pod_not_ready);
 
     expect(pod_ready).toBe(true);
     expect(pod_false_ready).toBe(false);
@@ -299,10 +268,7 @@ describe("Times", () => {
 
   it("should hold the ingestFile list", () => {
     const times = new Times();
-    const _files = getIngestFiles({
-      ingestName: "1538055240",
-      ingestType: "bulk",
-    })(s3_samples.ts_folders);
+    const _files = getIngestFiles({ ingestName: "1538055240", ingestType: "bulk" })(s3_samples.ts_folders);
     times.setIngestFiles(_files);
 
     const files = times.getIngestFiles();
@@ -312,9 +278,9 @@ describe("Times", () => {
       { Key: "pending/1538055240" },
       { Key: "pending/1538055240/person/person_headers.csv.gz" },
       { Key: "pending/1538055240/bulk.txt" },
-      { Key: "pending/1538055240/manifest.json" },
+      { Key: "pending/1538055240/manifest.json" }
     ];
-  
+
     expect(files.length).toBe(5);
     expect(files).toEqual(expected_files);
   });
@@ -326,7 +292,7 @@ describe("Times", () => {
     timer.neoEnd = moment(new Date());
     timer.elasticStart = moment(new Date());
     timer.elasticEnd = moment(new Date());
-    timer.ingestFiles = [{1:"1"}, {2:"2"}];
+    timer.ingestFiles = [{ 1: "1" }, { 2: "2" }];
 
     expect(timer.getNeoStart() instanceof moment).toBe(true);
     expect(timer.getElasticStart() instanceof moment).toBe(true);
@@ -357,12 +323,12 @@ describe("getPodStartedAt", () => {
             restartCount: 0,
             state: {
               terminated: {
-                containerID: "docker://9f4698514ea",
-              },
-            },
-          },
-        ],
-      },
+                containerID: "docker://9f4698514ea"
+              }
+            }
+          }
+        ]
+      }
     };
 
     expect(getPodStartedAt(rolling_update)).toBe(false);
@@ -374,5 +340,5 @@ module.exports = {
   running_job,
   pod_status_ready,
   pod_status_not_ready,
-  pod_not_ready,
+  pod_not_ready
 };

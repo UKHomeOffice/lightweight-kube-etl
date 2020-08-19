@@ -1,9 +1,8 @@
 pipeline:
-
   build:
     image: ukhomeoffice/drone-docker
     repo: docker.digital.homeoffice.gov.uk/ukhomeofficedigital/lightweight-kube-etl
-    secrets: [ docker_username, docker_password ]
+    secrets: [docker_username, docker_password]
     registry: docker.digital.homeoffice.gov.uk
     force_tag: true
     tags:

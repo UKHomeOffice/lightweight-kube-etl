@@ -8,12 +8,10 @@
       "type": "node",
       "request": "launch",
       "name": "Launch Program",
-      "skipFiles": [
-        "<node_internals>/**"
-      ],
+      "skipFiles": ["<node_internals>/**"],
       "program": "${workspaceFolder}/index.js"
     },
-    { 
+    {
       "type": "node",
       "request": "launch",
       "name": "Jest All",
@@ -23,15 +21,15 @@
       "internalConsoleOptions": "neverOpen",
       "disableOptimisticBPs": true,
       "windows": {
-        "program": "${workspaceFolder}/node_modules/jest/bin/jest",
+        "program": "${workspaceFolder}/node_modules/jest/bin/jest"
       },
-      "env": {        
-        "KUBE_SERVICE_ACCOUNT_TOKEN":"MOCK_TOKEN",
-        "BUCKET":"test.bucket",
+      "env": {
+        "KUBE_SERVICE_ACCOUNT_TOKEN": "MOCK_TOKEN",
+        "BUCKET": "test.bucket",
         "INGEST_PENDING_FOLDERS": "pending"
       }
     },
-    { 
+    {
       "type": "node",
       "request": "launch",
       "name": "Jest Current",
@@ -41,13 +39,13 @@
       "internalConsoleOptions": "neverOpen",
       "disableOptimisticBPs": true,
       "windows": {
-        "program": "${workspaceFolder}/node_modules/jest/bin/jest",
+        "program": "${workspaceFolder}/node_modules/jest/bin/jest"
       },
-      "env": {        
-        "KUBE_SERVICE_ACCOUNT_TOKEN":"MOCK_TOKEN",
-        "BUCKET":"test.bucket",
+      "env": {
+        "KUBE_SERVICE_ACCOUNT_TOKEN": "MOCK_TOKEN",
+        "BUCKET": "test.bucket",
         "INGEST_PENDING_FOLDERS": "pending"
       }
-    }    
+    }
   ]
 }
