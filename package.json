@@ -6,28 +6,29 @@
   "scripts": {
     "start": "node index",
     "test": "KUBE_SERVICE_ACCOUNT_TOKEN=MOCK_TOKEN BUCKET=test.bucket jest --coverage",
-    "test-watch": "KUBE_SERVICE_ACCOUNT_TOKEN=MOCK_TOKEN BUCKET=test.bucket jest --watch",
-    "precommit": "pretty-quick --staged && npm test"
+    "test-watch": "KUBE_SERVICE_ACCOUNT_TOKEN=MOCK_TOKEN BUCKET=test.bucket jest --watch"
   },
   "author": "dacc@ukhomeoffice",
   "license": "MIT",
   "dependencies": {
-    "async": "^2.6.1",
-    "aws-sdk": "^2.455.0",
-    "bluebird": "^3.5.2",
-    "moment": "^2.22.2",
-    "mongodb": "^3.1.1",
-    "ramda": "^0.25.0",
-    "merge": ">=1.2.1"
+    "async": "^2.6.3",
+    "aws-sdk": "^2.736.0",
+    "bluebird": "^3.7.2",
+    "merge": ">=1.2.1",
+    "moment": "^2.27.0",
+    "mongodb": "^3.6.0",
+    "ramda": "^0.25.0"
   },
   "devDependencies": {
-    "@babel/core": "^7.4.4",
-    "@babel/preset-env": "^7.4.4",
+    "@babel/core": "^7.11.1",
+    "@babel/preset-env": "^7.11.0",
     "babel-core": "^7.0.0-bridge.0",
     "babel-polyfill": "^6.26.0",
-    "jest": "^23.5.0",
-    "prettier": "^1.14.0",
-    "pretty-quick": "^1.6.0"
+    "babel-preset-jest": "^26.3.0",
+    "husky": "^4.2.5",
+    "jest": "^26.4.0",
+    "prettier": "^1.19.1",
+    "pretty-quick": "^1.11.1"
   },
   "engines": {
     "node": ">=10.6.0"
@@ -39,5 +40,10 @@
       "<rootDir>/src/mongodb.js",
       "<rootDir>/src/etl_hero.js"
     ]
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "pretty-quick --staged && npm test"
+    }
   }
 }

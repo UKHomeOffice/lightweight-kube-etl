@@ -1,16 +1,44 @@
 pipeline:
+  scan_commits:
+    image: alpine:3
+    commands:
+      - apk update
+      - apk add wget gzip git
+      - wget https://github.com/UKHomeOffice/repo-security-scanner/releases/download/0.4.0/scanrepo-0.4.0-linux-386.tar.gz
+      - tar -zxvf scanrepo-0.4.0-linux-386.tar.gz
+      - chmod +x scanrepo
+      - mv scanrepo /usr/bin
+      - git log -p -n 100| scanrepo
+    when:
+      event: [push, pull_request]
 
   build:
     environment:
       - DOCKER_HOST=tcp://172.17.0.1:2375
     image: registry.hub.docker.com/plugins/docker
     repo: docker.digital.homeoffice.gov.uk/ukhomeofficedigital/lightweight-kube-etl
-    secrets: [ docker_username, docker_password ]
+    secrets: [docker_username, docker_password]
     registry: docker.digital.homeoffice.gov.uk
     force_tag: true
     tags:
       - ${DRONE_COMMIT_SHA}
       - ${DRONE_COMMIT_BRANCH}
       - b${DRONE_BUILD_NUMBER}
+    when:
+      event: push
+
+  scan_docker_image:
+    image: quay.io/ukhomeofficedigital/anchore-submission:latest
+    dockerfile: Dockerfile
+    image_name: docker.digital.homeoffice.gov.uk/ukhomeofficedigital/lightweight-kube-etl:b${DRONE_BUILD_NUMBER}
+    local_image: true
+    # This indicates we are willing tolerate any vulnerabilities which are below medium (valid values: negligible, low, medium, high, critical)
+    tolerate: medium
+    # # An optional whitelist (comma separated list of CVE's)
+    whitelist: CVE-2019-2390,CVE-2019-2386,CVE-2020-8116
+    # # An optional whitelist file containing a list of CSV relative to the repo path
+    # whitelist_file: <PATH>
+    show_all_vulnerabilities: false
+    fail_on_detection: true
     when:
       event: push
