@@ -43,7 +43,7 @@ steps:
     pull: if-not-exists
     image: quay.io/ukhomeofficedigital/anchore-submission:latest
     settings:
-      FAIL_ON_DETECTION: true
+      FAIL_ON_DETECTION: false
       IMAGE_NAME: docker.digital.homeoffice.gov.uk/ukhomeofficedigital/lightweight-kube-etl:${DRONE_COMMIT_SHA}
       LOCAL_IMAGE: true
       TOLERATE: medium
