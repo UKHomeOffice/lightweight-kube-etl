@@ -13,63 +13,63 @@ environment:
   IMAGE_NAME: docker.digital.homeoffice.gov.uk/ukhomeofficedigital/lightweight-kube-etl
 
 steps:
-- name: scan_commits
-  pull: if-not-exists
-  image: alpine:3
-  commands:
-  - apk update
-  - apk add wget gzip git
-  - wget https://github.com/UKHomeOffice/repo-security-scanner/releases/download/0.4.0/scanrepo-0.4.0-linux-386.tar.gz
-  - tar -zxvf scanrepo-0.4.0-linux-386.tar.gz
-  - chmod +x scanrepo
-  - mv scanrepo /usr/bin
-  - git log -p | scanrepo
-  when:
-    event:
-    - push
-    - pull_request
+  - name: scan_commits
+    pull: if-not-exists
+    image: alpine:3
+    commands:
+      - apk update
+      - apk add wget gzip git
+      - wget https://github.com/UKHomeOffice/repo-security-scanner/releases/download/0.4.0/scanrepo-0.4.0-linux-386.tar.gz
+      - tar -zxvf scanrepo-0.4.0-linux-386.tar.gz
+      - chmod +x scanrepo
+      - mv scanrepo /usr/bin
+      - git log -p | scanrepo
+    when:
+      event:
+        - push
+        - pull_request
 
-- name: build
-  pull: if-not-exists
-  image: 340268328991.dkr.ecr.eu-west-2.amazonaws.com/acp/dind
-  commands:
-    - n=0; while [ "$n" -lt 60 ] && [ ! -e /var/run/docker.sock ]; do n=$(( n + 1 )); sleep 1; done
-    - docker build . -t $${IMAGE_NAME}:$${DRONE_COMMIT_SHA}
-  when:
-    event:
-    - push
+  - name: build
+    pull: if-not-exists
+    image: 340268328991.dkr.ecr.eu-west-2.amazonaws.com/acp/dind
+    commands:
+      - n=0; while [ "$n" -lt 60 ] && [ ! -e /var/run/docker.sock ]; do n=$(( n + 1 )); sleep 1; done
+      - docker build . -t $${IMAGE_NAME}:$${DRONE_COMMIT_SHA}
+    when:
+      event:
+        - push
 
-- name: scan_docker_image
-  pull: if-not-exists
-  image: quay.io/ukhomeofficedigital/anchore-submission:latest
-  settings:
-    FAIL_ON_DETECTION: false
-    IMAGE_NAME: docker.digital.homeoffice.gov.uk/ukhomeofficedigital/lightweight-kube-etl:${DRONE_COMMIT_SHA}
-    LOCAL_IMAGE: true
-    TOLERATE: medium
-    WHITELIST: CVE-2019-2390,CVE-2019-2386,CVE-2020-8116
-  when:
-    event:
-    - push
+  - name: scan_docker_image
+    pull: if-not-exists
+    image: quay.io/ukhomeofficedigital/anchore-submission:latest
+    settings:
+      FAIL_ON_DETECTION: true
+      IMAGE_NAME: docker.digital.homeoffice.gov.uk/ukhomeofficedigital/lightweight-kube-etl:${DRONE_COMMIT_SHA}
+      LOCAL_IMAGE: true
+      TOLERATE: medium
+      WHITELIST: CVE-2019-2390,CVE-2019-2386,CVE-2020-8116
+    when:
+      event:
+        - push
 
-- name: push_to_artifactory
-  pull: if-not-exists
-  image: 340268328991.dkr.ecr.eu-west-2.amazonaws.com/acp/dind
-  commands:
-    - docker login -u="$${DOCKER_USERNAME}" -p="$${DOCKER_PASSWORD}" "$${DOCKER_REPO}"
-    - docker tag $${IMAGE_NAME}:$${DRONE_COMMIT_SHA} $${IMAGE_NAME}:$${DRONE_COMMIT_BRANCH}
-    - docker tag $${IMAGE_NAME}:$${DRONE_COMMIT_SHA} $${IMAGE_NAME}:$${DRONE_BUILD_NUMBER}
-    - docker push $${IMAGE_NAME}:$${DRONE_COMMIT_SHA}
-    - docker push $${IMAGE_NAME}:$${DRONE_COMMIT_BRANCH}
-    - docker push $${IMAGE_NAME}:$${DRONE_BUILD_NUMBER}
-  environment:
-    DOCKER_PASSWORD:
-      from_secret: docker_password
-    DOCKER_USERNAME:
-      from_secret: docker_username
-  when:
-    event:
-    - push
+  - name: push_to_artifactory
+    pull: if-not-exists
+    image: 340268328991.dkr.ecr.eu-west-2.amazonaws.com/acp/dind
+    commands:
+      - docker login -u="$${DOCKER_USERNAME}" -p="$${DOCKER_PASSWORD}" "$${DOCKER_REPO}"
+      - docker tag $${IMAGE_NAME}:$${DRONE_COMMIT_SHA} $${IMAGE_NAME}:$${DRONE_COMMIT_BRANCH}
+      - docker tag $${IMAGE_NAME}:$${DRONE_COMMIT_SHA} $${IMAGE_NAME}:$${DRONE_BUILD_NUMBER}
+      - docker push $${IMAGE_NAME}:$${DRONE_COMMIT_SHA}
+      - docker push $${IMAGE_NAME}:$${DRONE_COMMIT_BRANCH}
+      - docker push $${IMAGE_NAME}:$${DRONE_BUILD_NUMBER}
+    environment:
+      DOCKER_PASSWORD:
+        from_secret: docker_password
+      DOCKER_USERNAME:
+        from_secret: docker_username
+    when:
+      event:
+        - push
 
 services:
   - name: docker
@@ -77,7 +77,7 @@ services:
     when:
       event:
         exclude:
-        - pull_request
+          - pull_request
 
   - name: anchore-submission-server
     image: 340268328991.dkr.ecr.eu-west-2.amazonaws.com/acp/anchore-submission:latest
@@ -87,6 +87,4 @@ services:
     when:
       event:
         exclude:
-        - pull_request
-
-...
+          - pull_request
