@@ -13,7 +13,6 @@ environment:
   IMAGE_NAME: docker.digital.homeoffice.gov.uk/ukhomeofficedigital/lightweight-kube-etl
 
 steps:
-<<<<<<< HEAD
 - name: scan_commits
   pull: if-not-exists
   image: alpine:3
@@ -30,8 +29,6 @@ steps:
     - push
     - pull_request
 
-=======
->>>>>>> 7df67c54f5066f21955059ffac30dcbbaa21f4ae
 - name: build
   pull: if-not-exists
   image: 340268328991.dkr.ecr.eu-west-2.amazonaws.com/acp/dind
@@ -50,11 +47,7 @@ steps:
     IMAGE_NAME: docker.digital.homeoffice.gov.uk/ukhomeofficedigital/lightweight-kube-etl:${DRONE_COMMIT_SHA}
     LOCAL_IMAGE: true
     TOLERATE: medium
-<<<<<<< HEAD
     WHITELIST: CVE-2019-2390,CVE-2019-2386,CVE-2020-8116
-=======
-    WHITELIST:
->>>>>>> 7df67c54f5066f21955059ffac30dcbbaa21f4ae
   when:
     event:
     - push
@@ -81,8 +74,6 @@ steps:
 services:
   - name: docker
     image: 340268328991.dkr.ecr.eu-west-2.amazonaws.com/acp/dind
-<<<<<<< HEAD
-=======
     when:
       event:
         exclude:
@@ -93,23 +84,9 @@ services:
     pull: always
     commands:
       - /run.sh server
->>>>>>> 7df67c54f5066f21955059ffac30dcbbaa21f4ae
     when:
       event:
         exclude:
         - pull_request
 
-<<<<<<< HEAD
-  - name: anchore-submission-server
-    image: 340268328991.dkr.ecr.eu-west-2.amazonaws.com/acp/anchore-submission:latest
-    pull: always
-    commands:
-      - /run.sh server
-    when:
-      event:
-        exclude:
-        - pull_request
-
-=======
->>>>>>> 7df67c54f5066f21955059ffac30dcbbaa21f4ae
 ...
