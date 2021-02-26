@@ -1,16 +1,76 @@
-pipeline:
+---
+kind: pipeline
+name: default
+type: kubernetes
 
-  build:
-    environment:
-      - DOCKER_HOST=tcp://172.17.0.1:2375
-    image: registry.hub.docker.com/plugins/docker
-    repo: docker.digital.homeoffice.gov.uk/ukhomeofficedigital/lightweight-kube-etl
-    secrets: [ docker_username, docker_password ]
-    registry: docker.digital.homeoffice.gov.uk
-    force_tag: true
-    tags:
-      - ${DRONE_COMMIT_SHA}
-      - ${DRONE_COMMIT_BRANCH}
-      - b${DRONE_BUILD_NUMBER}
+platform:
+  os: linux
+  arch: amd64
+
+environment:
+  DOCKER_REPO: docker.digital.homeoffice.gov.uk
+  DOCKER_SERVER: tcp://127.0.0.1:2375
+  IMAGE_NAME: docker.digital.homeoffice.gov.uk/ukhomeofficedigital/lightweight-kube-etl
+
+steps:
+- name: build
+  pull: if-not-exists
+  image: 340268328991.dkr.ecr.eu-west-2.amazonaws.com/acp/dind
+  commands:
+    - n=0; while [ "$n" -lt 60 ] && [ ! -e /var/run/docker.sock ]; do n=$(( n + 1 )); sleep 1; done
+    - docker build . -t $${IMAGE_NAME}:$${DRONE_COMMIT_SHA}
+  when:
+    event:
+    - push
+
+- name: scan_docker_image
+  pull: if-not-exists
+  image: quay.io/ukhomeofficedigital/anchore-submission:latest
+  settings:
+    FAIL_ON_DETECTION: true
+    IMAGE_NAME: docker.digital.homeoffice.gov.uk/ukhomeofficedigital/lightweight-kube-etl:${DRONE_COMMIT_SHA}
+    LOCAL_IMAGE: true
+    TOLERATE: medium
+    WHITELIST:
+  when:
+    event:
+    - push
+
+- name: push_to_artifactory
+  pull: if-not-exists
+  image: 340268328991.dkr.ecr.eu-west-2.amazonaws.com/acp/dind
+  commands:
+    - docker login -u="$${DOCKER_USERNAME}" -p="$${DOCKER_PASSWORD}" "$${DOCKER_REPO}"
+    - docker tag $${IMAGE_NAME}:$${DRONE_COMMIT_SHA} $${IMAGE_NAME}:$${DRONE_COMMIT_BRANCH}
+    - docker tag $${IMAGE_NAME}:$${DRONE_COMMIT_SHA} $${IMAGE_NAME}:$${DRONE_BUILD_NUMBER}
+    - docker push $${IMAGE_NAME}:$${DRONE_COMMIT_SHA}
+    - docker push $${IMAGE_NAME}:$${DRONE_COMMIT_BRANCH}
+    - docker push $${IMAGE_NAME}:$${DRONE_BUILD_NUMBER}
+  environment:
+    DOCKER_PASSWORD:
+      from_secret: docker_password
+    DOCKER_USERNAME:
+      from_secret: docker_username
+  when:
+    event:
+    - push
+
+services:
+  - name: docker
+    image: 340268328991.dkr.ecr.eu-west-2.amazonaws.com/acp/dind
     when:
-      event: push
+      event:
+        exclude:
+        - pull_request
+
+  - name: anchore-submission-server
+    image: 340268328991.dkr.ecr.eu-west-2.amazonaws.com/acp/anchore-submission:latest
+    pull: always
+    commands:
+      - /run.sh server
+    when:
+      event:
+        exclude:
+        - pull_request
+
+...
